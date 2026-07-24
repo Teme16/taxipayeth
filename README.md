@@ -33,7 +33,22 @@
  │  • Dynamic Tariff    │ ─────► │  • Payment DB Persistence  │ ─────► │  • Real-Time Audio   │
  │  • Telebirr Checkout │        │  • Socket.io Room Broadcast│        │    TTS Announcement  │
  └──────────────────────┘        └────────────────────────────┘        └──────────────────────┘
-✨ Key Platform Capabilities🔒 JWT-Enforced Role-Based Access Control (RBAC): Dynamic portal mounting and route protection for Passengers and Minibus Drivers.📲 Instant QR Fare Calculation: Auto-computes total route tariffs based on passenger seat selection and vehicle-specific rates.🔊 Hands-Free Driver Voice Alerts: Uses the browser-native Web Speech API to loudly synthesize incoming payment notifications (e.g., "Payment received: 30 Birr for 2 seats"), letting drivers stay focused on the road.⚡ Bi-Directional WebSocket Sync: Socket.io room isolation pushes transaction confirmations to drivers instantaneously without polling.🎨 Adaptive Mobile-First UI: Responsive dark-mode interface built with React & Tailwind CSS v4 featuring modern card layouts and animated splash entry.🛠️ Tech Stack & EcosystemLayerTechnologiesFrontend AppReact 18, Tailwind CSS v4, Socket.io-Client, Lucide React, Web Speech APIBackend APINode.js, Express.js, Socket.io, JWT (jsonwebtoken), Bcrypt.jsDatabaseMongoDB & Mongoose ORMDev ToolingVite, Nodemon, Git📂 Project StructurePlaintextTaxi-Pay/
+
+✨ Key Platform Capabilities
+🔒 JWT-Enforced Role-Based Access Control (RBAC): Dynamic portal mounting and route protection for Passengers and Minibus Drivers.
+
+📲 Instant QR Fare Calculation: Auto-computes total route tariffs based on passenger seat selection and vehicle-specific rates.
+
+🔊 Hands-Free Driver Voice Alerts: Uses the browser-native Web Speech API to loudly synthesize incoming payment notifications (e.g., "Payment received: 30 Birr for 2 seats"), letting drivers stay focused on the road.
+
+⚡ Bi-Directional WebSocket Sync: Socket.io room isolation pushes transaction confirmations to drivers instantaneously without polling.
+
+🎨 Adaptive Mobile-First UI: Responsive dark-mode interface built with React & Tailwind CSS v4 featuring modern card layouts and animated splash entry.
+
+🛠️ Tech Stack & EcosystemLayerTechnologiesFrontend AppReact 18, Tailwind CSS v4, Socket.io-Client, Lucide React, Web Speech APIBackend APINode.js, Express.js, Socket.io, JWT (jsonwebtoken), Bcrypt.jsDatabaseMongoDB & Mongoose ORMDev ToolingVite, Nodemon, Git
+
+📂 Project Structure
+Taxi-Pay/
 ├── 📁 backend/
 │   ├── 📁 models/          # MongoDB schemas (User, Payment, Tariff)
 │   ├── 📁 routes/          # API Controllers (Auth, Tariffs, Drivers, Payments)
@@ -45,20 +60,40 @@
 │   │   └── 📄 main.jsx     # Client entry point
 │   └── 📄 index.html
 └── 📄 README.md
-🚀 Local Development Setup1. Clone the RepositoryBashgit clone [https://github.com/YOUR_USERNAME/taxi-pay.git](https://github.com/YOUR_USERNAME/taxi-pay.git)
+🚀 Local Development Setup
+1. Clone the Repository
+git clone [https://github.com/YOUR_USERNAME/taxi-pay.git](https://github.com/YOUR_USERNAME/taxi-pay.git)
 cd taxi-pay
-2. Configure & Start BackendBashcd backend
+
+2. Configure & Start Backend
+cd backend
 npm install
-Create a .env file in the backend/ directory:Code snippetPORT=5001
+
+Create a .env file in the backend/ directory:
+PORT=5001
 MONGO_URI=mongodb://127.0.0.1:27017/taxipay
 JWT_SECRET=taxipay_super_secret_jwt_key
-Run the backend server:Bashnpm start
+
+Run the backend server:
+npm start
 # 🚀 Server active at http://localhost:5001
-3. Configure & Start FrontendOpen a new terminal session in the project root:Bashcd frontend
+
+3. Configure & Start Frontend
+Open a new terminal session in the project root:
+cd frontend
 npm install
 npm run dev
 # 💻 Client active at http://localhost:5173
-🧪 Real-Time Simulation GuideDriver Workspace: Open http://localhost:5173 in Browser Window A, register or log in as a Minibus Driver with a vehicle plate (e.g., AA-3-A12345), and enter the dashboard.Passenger Workspace: Open http://localhost:5173 in a Private / Incognito Window, register as a Passenger, scan the vehicle QR code, select seat count, and tap Pay with Telebirr.Live Sync: Observe the live payment transaction appear in Window A while your machine's audio output announces the received fare out loud!📝 LicenseThis project is licensed under the MIT License — see the LICENSE file for details.
+
+🧪 Real-Time Simulation Guide
+Driver Workspace: Open http://localhost:5173 in Browser Window A, register or log in as a Minibus Driver with a vehicle plate (e.g., AA-3-A12345), and enter the dashboard.
+
+Passenger Workspace: Open http://localhost:5173 in a Private / Incognito Window, register as a Passenger, scan the vehicle QR code, select seat count, and tap Pay with Telebirr.
+
+Live Sync: Observe the live payment transaction appear in Window A while your machine's audio output announces the received fare out loud!
+
+📝 License
+This project is licensed under the MIT License — see the LICENSE file for details.
 ---
 
 ### Push it to GitHub in terminal:
