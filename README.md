@@ -1,115 +1,36 @@
-# 🚕 Taxi Pay — Digital Transit Payment Ecosystem
+<div align="center">
 
-> A full-stack MERN application designed to digitalize and streamline fare collection for urban minibus transit systems using QR codes, digital wallets (Telebirr), and real-time audio/visual driver notifications.
+  <!-- Project Logo / Hero Banner -->
+  <svg width="120" height="120" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="24" height="24" rx="6" fill="#1E293B"/>
+    <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5H6.5C5.84 5 5.28 5.42 5.08 6.01L3 12V20C3 20.55 3.45 21 4 21H5C5.55 21 6 20.55 6 20V19H18V20C18 20.55 18.45 21 19 21H20C20.55 21 21 20.55 21 20V12L18.92 6.01ZM6.5 16C5.67 16 5 15.33 5 14.5C5 13.67 5.67 13 6.5 13C7.33 13 8 13.67 8 14.5C8 15.33 7.33 16 6.5 16ZM17.5 16C16.67 16 16 15.33 16 14.5C16 13.67 16.67 13 17.5 13C18.33 13 19 13.67 19 14.5C19 15.33 18.33 16 17.5 16ZM5 11L6.5 6.5H17.5L19 11H5Z" fill="#3B82F6"/>
+    <circle cx="12" cy="11" r="2" fill="#10B981"/>
+  </svg>
 
----
+  # 🚕 Taxi Pay
+  ### *Next-Gen Digital Transit Payment Ecosystem*
 
-## 🌟 Key Features
+  [![React](https://img.shields.io/badge/React-18.x-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org/)
+  [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4.0-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+  [![Node.js](https://img.shields.io/badge/Node.js-18.x-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+  [![MongoDB](https://img.shields.io/badge/MongoDB-Cluster-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
+  [![Socket.io](https://img.shields.io/badge/Socket.io-4.x-010101?style=for-the-badge&logo=socketdotio&logoColor=white)](https://socket.io/)
+  [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
 
-* **Role-Based Access Control (RBAC):** Dedicated authentication and tailored workspaces for **Passengers** and **Minibus Drivers**.
-* **Zero-Friction QR Passenger Portal:** Passengers scan vehicle-specific QR codes, select seat counts, and execute instant fare checkout via Telebirr integration.
-* **Live Driver Audio & Visual Dashboard:** Real-time WebSocket connection pushes incoming payments instantly to drivers with automated **Text-To-Speech audio confirmations** to prevent distracted driving.
-* **Digital Transaction Audit:** Secure backend logging of vehicle tariffs, ride history, and financial metrics.
-* **Modern Adaptive UI:** Built with React and Tailwind CSS v4, featuring dynamic theme utilities, animated splash screens, and responsive layouts.
+  <p align="center">
+    A full-stack MERN platform modernizing urban minibus fare collection using dynamic QR code scanning, digital wallets (Telebirr), and hands-free real-time audio announcements for drivers.
+  </p>
 
----
+  ---
+</div>
 
-## 🛠️ Tech Stack
+## ⚡ Core Value Proposition
 
-### Frontend
-* **Framework:** React.js (Vite)
-* **Styling:** Tailwind CSS v4
-* **Real-time WebSockets:** Socket.io-client
-* **Icons & Animation:** Lucide React
-
-### Backend
-* **Runtime:** Node.js & Express.js
-* **Database:** MongoDB & Mongoose
-* **Real-time Engine:** Socket.io
-* **Authentication:** JSON Web Tokens (JWT) & Bcrypt.js
-
----
-
-## 📁 Repository Structure
+In fast-paced urban transit environments, cash handling creates operational bottlenecks and safety risks. **Taxi Pay** solves this by bridging passengers and drivers with real-time WebSocket communication and browser-native Speech Synthesis.
 
 ```text
-Taxi-Pay/
-├── backend/
-│   ├── models/           # MongoDB schemas (User, Payment, Vehicle)
-│   ├── routes/           # Express API endpoints (Auth, Tariffs, Drivers, Payments)
-│   └── server.js         # Express app & Socket.io server initialization
-├── frontend/
-│   ├── src/
-│   │   ├── components/   # React components (PassengerPage, DriverPage, SplashScreen, AuthPage)
-│   │   ├── App.jsx       # Dynamic routing & session context
-│   │   └── main.jsx      # Vite entry point
-│   └── index.html
-└── README.md
-🚀 Getting Started
-Prerequisites
-Node.js (v18+ recommended)
-
-MongoDB (Local instance or MongoDB Atlas connection string)
-
-Git
-
-1. Clone the Repository
-Bash
-git clone [https://github.com/YOUR_USERNAME/taxi-pay.git](https://github.com/YOUR_USERNAME/taxi-pay.git)
-cd taxi-pay
-2. Backend Setup
-Navigate to the backend directory:
-
-Bash
-cd backend
-Install dependencies:
-
-Bash
-npm install
-Create a .env file in the backend root:
-
-Code snippet
-PORT=5001
-MONGO_URI=mongodb://127.0.0.1:27017/taxipay
-JWT_SECRET=your_jwt_secret_key
-Start the backend server:
-
-Bash
-npm start
-The backend cluster will run on http://localhost:5001.
-
-3. Frontend Setup
-Open a new terminal and navigate to the frontend directory:
-
-Bash
-cd frontend
-Install dependencies:
-
-Bash
-npm install
-Start the Vite development server:
-
-Bash
-npm run dev
-The frontend application will be live at http://localhost:5173.
-
-💡 How to Test the Real-Time Flow
-Driver View: Open a browser tab at http://localhost:5173, register as a Minibus Driver with a vehicle plate (e.g., AA-3-A12345), and enter the dashboard.
-
-Passenger View: Open a second tab (or incognito window), register as a Passenger, scan the vehicle QR, select seat counts, and click Pay with Telebirr.
-
-Live Alert: Watch the transaction instantly register on the driver tab with an automated voice announcement!
-
-📝 License
-Distributed under the MIT License. See LICENSE for more information.
-
-
----
-
-### How to push this README to GitHub:
-Run these commands in your VS Code terminal:
-
-```bash
-git add README.md
-git commit -m "Docs: Add comprehensive README for Taxi Pay project"
-git push origin main
+ 📱 Passenger Scans QR           ⚡ Express & Socket.io Hub           🔊 Driver Dashboard
+ ┌──────────────────────┐        ┌─────────────────────────┐        ┌──────────────────────┐
+ │  • Select Seats      │ ─────► │  • Validates JWT        │ ─────► │  • Real-time Visual  │
+ │  • Pay via Telebirr  │        │  • Broadcasts Transaction│        │  • Voice TTS Audio   │
+ └──────────────────────┘        └─────────────────────────┘        └──────────────────────┘
