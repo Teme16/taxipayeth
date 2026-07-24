@@ -45,3 +45,71 @@ Taxi-Pay/
 │   │   └── main.jsx      # Vite entry point
 │   └── index.html
 └── README.md
+🚀 Getting Started
+Prerequisites
+Node.js (v18+ recommended)
+
+MongoDB (Local instance or MongoDB Atlas connection string)
+
+Git
+
+1. Clone the Repository
+Bash
+git clone [https://github.com/YOUR_USERNAME/taxi-pay.git](https://github.com/YOUR_USERNAME/taxi-pay.git)
+cd taxi-pay
+2. Backend Setup
+Navigate to the backend directory:
+
+Bash
+cd backend
+Install dependencies:
+
+Bash
+npm install
+Create a .env file in the backend root:
+
+Code snippet
+PORT=5001
+MONGO_URI=mongodb://127.0.0.1:27017/taxipay
+JWT_SECRET=your_jwt_secret_key
+Start the backend server:
+
+Bash
+npm start
+The backend cluster will run on http://localhost:5001.
+
+3. Frontend Setup
+Open a new terminal and navigate to the frontend directory:
+
+Bash
+cd frontend
+Install dependencies:
+
+Bash
+npm install
+Start the Vite development server:
+
+Bash
+npm run dev
+The frontend application will be live at http://localhost:5173.
+
+💡 How to Test the Real-Time Flow
+Driver View: Open a browser tab at http://localhost:5173, register as a Minibus Driver with a vehicle plate (e.g., AA-3-A12345), and enter the dashboard.
+
+Passenger View: Open a second tab (or incognito window), register as a Passenger, scan the vehicle QR, select seat counts, and click Pay with Telebirr.
+
+Live Alert: Watch the transaction instantly register on the driver tab with an automated voice announcement!
+
+📝 License
+Distributed under the MIT License. See LICENSE for more information.
+
+
+---
+
+### How to push this README to GitHub:
+Run these commands in your VS Code terminal:
+
+```bash
+git add README.md
+git commit -m "Docs: Add comprehensive README for Taxi Pay project"
+git push origin main
