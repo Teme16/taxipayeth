@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@theme {
+  --color-taxi-blue-primary: #0187D3;
+  --color-taxi-blue-gradient-end: #0A4A9B;
+  --color-charcoal-card: #2D2D2D;
+  --color-taxi-blue-primary: #0187D3;
+}
+
+body {
+  background: linear-gradient(to bottom, #0187D3, #0A4A9B);
+  min-height: 100vh;
+  margin: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+}
