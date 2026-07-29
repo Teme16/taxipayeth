@@ -1,60 +1,88 @@
+require('dotenv').config(); // Load variables from .env if present
 const express = require('express');
-const http = require('http'); // Native Node module
-const { Server } = require('socket.io'); // Socket.io integration
-const mongoose = require('mongoose');
+const http = require('http');
+const { Server } = require('socket.io');
 const cors = require('cors');
-const bodyParser = require('body-parser');
-const dotenv = require('dotenv');
+const path = require('path');
+const mongoose = require('mongoose');
 
-dotenv.config();
+// 1. Import Routers
+const authRoutes = require('./routes/authRoutes');
+const driverRoutes = require('./routes/drivers');
+const paymentRoutes = require('./routes/payments'); // <-- ADDED THIS
+const { getDriverRoomName } = require('./utils/driverRooms');
 
 const app = express();
-const server = http.createServer(app); // Wrap express app
+const server = http.createServer(app);
+
+// Initialize Socket.io with CORS
 const io = new Server(server, {
-    cors: {
-        origin: "*", // In production, target your specific React domain
-        methods: ["GET", "POST"]
-    }
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE']
+  }
 });
 
-// FIXED: Changed fallback port to 5001 to match frontend requests
-const PORT = process.env.PORT || 5001;
+// Make Socket.io instance available in Express routes via req.app.get('io')
+app.set('io', io);
 
+// Middleware
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Attach Socket.io instance to the request lifecycle object
+// Attach req.io middleware so payments.js can call req.io.to(...) directly
 app.use((req, res, next) => {
-    req.io = io;
-    next();
+  req.io = io;
+  next();
 });
 
-// Database Connection
-mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/taxipay')
-    .then(() => console.log("🔒 MongoDB connection established successfully."))
-    .catch(err => console.error("❌ Database connection structural fault:", err));
+// Serve Static Uploads Directory (Crucial for Profile Pictures & Docs)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// WebSocket Connection Hub
+// 2. Mount API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/drivers', driverRoutes);
+app.use('/api/payments', paymentRoutes); // <-- ADDED THIS
+
+// Fallback 404 route to prevent HTML 404 responses
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: `Route ${req.originalUrl} not found` });
+});
+
+// Socket.io Real-time Handlers
 io.on('connection', (socket) => {
-    console.log(`🔌 New client handshaking: ${socket.id}`);
+  console.log('⚡ Socket client connected:', socket.id);
 
-    // Allow drivers to join an isolated "room" identified by their Driver/Vehicle ID
-    socket.on('join_driver_room', (driverId) => {
-        socket.join(driverId);
-        console.log(`📡 Driver joined dedicated operational channel: ${driverId}`);
-    });
+  socket.on('join_driver_room', (driverId) => {
+    const roomName = getDriverRoomName(driverId);
+    socket.join(roomName);
+    console.log(`Driver joined room: ${roomName}`);
+  });
 
-    socket.on('disconnect', () => {
-        console.log(`❌ Client disconnected: ${socket.id}`);
-    });
+  socket.on('update_seat_status', (data) => {
+    const { driverId } = data;
+    const roomName = getDriverRoomName(driverId);
+    io.to(roomName).emit('seat_status_changed', data);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+  });
 });
 
-// Connect Routes
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/tariffs', require('./routes/tariffs'));
-app.use('/api/drivers', require('./routes/drivers'));
-app.use('/api/payments', require('./routes/payments'));
+// Connect Database and Start Server
+const PORT = process.env.PORT || 5001;
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/taxipay';
 
-server.listen(PORT, () => {
-    console.log(`🚀 Taxi Pay MERN Cluster spinning on port ${PORT}`);
-});
+mongoose
+  .connect(MONGO_URI)
+  .then(() => {
+    console.log('✅ Connected to MongoDB');
+    server.listen(PORT, () => {
+      console.log(`🚀 Server running on http://localhost:${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error('❌ Database connection error:', err);
+  });

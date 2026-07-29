@@ -33,7 +33,7 @@ function App() {
         <div className="w-full max-w-md mb-6 flex justify-between items-center bg-neutral-900/80 px-4 py-2.5 rounded-2xl border border-neutral-800 backdrop-blur-md">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-full bg-taxi-blue-primary flex items-center justify-center font-bold text-white text-xs uppercase">
-              {user.name[0]}
+              {user.name ? user.name[0] : 'U'}
             </div>
             <div>
               <p className="text-xs font-bold text-white leading-tight">{user.name}</p>
@@ -42,7 +42,8 @@ function App() {
           </div>
           <button
             onClick={handleLogout}
-            className="text-xs text-red-400 hover:text-red-300 font-bold bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 rounded-lg transition"
+            type="button"
+            className="text-xs text-red-400 hover:text-red-300 font-bold bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 rounded-lg transition cursor-pointer"
           >
             Sign Out
           </button>
@@ -55,7 +56,11 @@ function App() {
         ) : user.role === 'passenger' ? (
           <PassengerPage user={user} />
         ) : (
-          <DriverPage driverId={user.driverData?.driverId || user.id} targaNo={user.driverData?.targaNo} />
+          <DriverPage
+            driverName={user.name || user.driverData?.driverName}
+            driverId={user.driverData?.driverId || user.driverId || user._id || user.id}
+            targaNo={user.driverData?.targaNo || user.targaNo || 'AA-3-A00000'}
+          />
         )}
       </main>
     </div>
