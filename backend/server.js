@@ -75,6 +75,16 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 5001;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/taxipay';
 
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`❌ Port ${PORT} is already in use. Stop the other process or set a different PORT.`);
+    process.exit(1);
+  }
+
+  console.error('❌ Server error:', err);
+  process.exit(1);
+});
+
 mongoose
   .connect(MONGO_URI)
   .then(() => {

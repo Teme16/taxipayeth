@@ -4,17 +4,92 @@ import axios from 'axios';
 export default function AuthPage({ onLoginSuccess }) {
   const [isLogin, setIsLogin] = useState(true);
   const [role, setRole] = useState('passenger');
-  const [formData, setFormData] = useState({ name: '', phone: '', password: '', targaNo: '' });
+  const [formData, setFormData] = useState({
+    name: '',
+    phone: '',
+    password: '',
+    targaNo: '',
+    telegramChatId: '',
+    code: ''
+  });
+
+  // Verification state machine: 'idle' | 'code_sent' | 'verified'
+  const [otpStep, setOtpStep] = useState('idle');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // 1. Send OTP to Telegram
+  const handleSendTelegramCode = async () => {
+    if (!formData.phone || !formData.telegramChatId) {
+      setError('Please fill in both Phone Number and Telegram Chat ID first.');
+      return;
+    }
+
     setLoading(true);
     setError('');
+    setSuccessMsg('');
+
+    try {
+      const res = await axios.post('http://localhost:5001/api/auth/send-telegram-code', {
+        phone: formData.phone,
+        telegramChatId: formData.telegramChatId
+      });
+
+      if (res.data.success) {
+        setOtpStep('code_sent');
+        setSuccessMsg('Verification code sent to your Telegram!');
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to send Telegram code. Make sure you started the Telegram bot!');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 2. Verify OTP Code
+  const handleVerifyCode = async () => {
+    if (!formData.telegramChatId || !formData.code) {
+      setError('Please enter both your Telegram Chat ID and the verification code.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setSuccessMsg('');
+
+    try {
+      const res = await axios.post('http://localhost:5001/api/auth/verify-telegram-code', {
+        telegramChatId: String(formData.telegramChatId).trim(),
+        code: String(formData.code).trim()
+      });
+
+      if (res.data.success) {
+        setOtpStep('verified');
+        setSuccessMsg('Telegram code verified successfully!');
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Invalid or expired verification code.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 3. Final Form Submit (Login or Complete Registration)
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!isLogin && otpStep !== 'verified') {
+      setError('You must verify your Telegram code before registering.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setSuccessMsg('');
 
     const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-    const payload = isLogin 
+    const payload = isLogin
       ? { phone: formData.phone, password: formData.password }
       : { ...formData, role };
 
@@ -27,6 +102,8 @@ export default function AuthPage({ onLoginSuccess }) {
           onLoginSuccess(res.data.user);
         } else {
           setIsLogin(true);
+          setOtpStep('idle');
+          setFormData({ name: '', phone: '', password: '', targaNo: '', telegramChatId: '', code: '' });
           alert('Registration successful! Please login.');
         }
       }
@@ -35,6 +112,13 @@ export default function AuthPage({ onLoginSuccess }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const resetFormState = () => {
+    setIsLogin(!isLogin);
+    setError('');
+    setSuccessMsg('');
+    setOtpStep('idle');
   };
 
   return (
@@ -50,6 +134,12 @@ export default function AuthPage({ onLoginSuccess }) {
         {error && (
           <div className="bg-red-500/20 border border-red-500 text-red-300 text-xs p-3 rounded-xl mb-4 text-center">
             {error}
+          </div>
+        )}
+
+        {successMsg && (
+          <div className="bg-emerald-500/20 border border-emerald-500 text-emerald-300 text-xs p-3 rounded-xl mb-4 text-center">
+            {successMsg}
           </div>
         )}
 
@@ -102,6 +192,7 @@ export default function AuthPage({ onLoginSuccess }) {
             </>
           )}
 
+          {/* Phone Input */}
           <div>
             <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Phone Number</label>
             <input
@@ -114,6 +205,68 @@ export default function AuthPage({ onLoginSuccess }) {
             />
           </div>
 
+          {/* Registration Telegram Section */}
+{!isLogin && (
+  <div className="p-3 bg-neutral-900/60 border border-neutral-800 rounded-2xl space-y-3">
+    
+    {/* If verified, hide inputs and show a sleek green status message */}
+    {otpStep === 'verified' ? (
+      <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-xl text-emerald-400 text-xs font-bold">
+        <span>✓ Telegram ID Verified</span>
+        <span className="text-[10px] opacity-75">Ready to Register</span>
+      </div>
+    ) : (
+      <>
+        <div>
+          <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Telegram Chat ID</label>
+          <input
+            type="text"
+            value={formData.telegramChatId}
+            onChange={(e) => setFormData({ ...formData, telegramChatId: e.target.value })}
+            className="w-full bg-neutral-950 border border-neutral-800 focus:border-taxi-blue-primary rounded-xl p-3 text-sm text-white outline-none font-mono"
+            placeholder="e.g. 123456789"
+          />
+        </div>
+
+        {otpStep === 'idle' && (
+          <button
+            type="button"
+            onClick={handleSendTelegramCode}
+            disabled={loading}
+            className="w-full bg-neutral-800 hover:bg-neutral-700 text-xs text-blue-400 font-bold py-2.5 rounded-xl border border-blue-500/30 transition disabled:opacity-50"
+          >
+            {loading ? 'Sending Code...' : 'Send Verification Code via Telegram'}
+          </button>
+        )}
+
+        {otpStep === 'code_sent' && (
+          <div>
+            <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Telegram OTP Code</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                maxLength={6}
+                value={formData.code}
+                onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                className="w-full bg-neutral-950 border border-neutral-800 text-center font-mono text-base tracking-widest rounded-xl p-2.5 text-white"
+                placeholder="123456"
+              />
+              <button
+                type="button"
+                onClick={handleVerifyCode}
+                disabled={loading}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 rounded-xl transition disabled:opacity-50"
+              >
+                {loading ? 'Verifying...' : 'Verify'}
+              </button>
+            </div>
+          </div>
+        )}
+      </>
+    )}
+  </div>
+)}
+          {/* Password Input */}
           <div>
             <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Password</label>
             <input
@@ -128,8 +281,8 @@ export default function AuthPage({ onLoginSuccess }) {
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full bg-taxi-blue-primary hover:bg-blue-600 text-white font-bold py-3.5 rounded-xl shadow-lg transition cursor-pointer mt-2"
+            disabled={loading || (!isLogin && otpStep !== 'verified')}
+            className="w-full bg-taxi-blue-primary hover:bg-blue-600 text-white font-bold py-3.5 rounded-xl shadow-lg transition cursor-pointer mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Authenticating...' : isLogin ? 'Sign In' : 'Register Account'}
           </button>
@@ -137,7 +290,7 @@ export default function AuthPage({ onLoginSuccess }) {
 
         <div className="text-center mt-6 pt-4 border-t border-neutral-800">
           <button
-            onClick={() => { setIsLogin(!isLogin); setError(''); }}
+            onClick={resetFormState}
             className="text-xs text-gray-400 hover:text-white transition"
           >
             {isLogin ? "Don't have an account? Register" : 'Already registered? Sign In'}
