@@ -9,7 +9,8 @@ const mongoose = require('mongoose');
 // 1. Import Routers
 const authRoutes = require('./routes/authRoutes');
 const driverRoutes = require('./routes/drivers');
-const paymentRoutes = require('./routes/payments'); // <-- ADDED THIS
+const paymentRoutes = require('./routes/payments');
+const adminRoutes = require('./routes/adminRoutes');
 const { getDriverRoomName } = require('./utils/driverRooms');
 
 const app = express();
@@ -31,7 +32,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Attach req.io middleware so payments.js can call req.io.to(...) directly
+// Attach req.io middleware so routes can access socket directly
 app.use((req, res, next) => {
   req.io = io;
   next();
@@ -43,16 +44,35 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // 2. Mount API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/drivers', driverRoutes);
-app.use('/api/payments', paymentRoutes); // <-- ADDED THIS
+app.use('/api/payments', paymentRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Fallback 404 route to prevent HTML 404 responses
 app.use((req, res) => {
   res.status(404).json({ success: false, message: `Route ${req.originalUrl} not found` });
 });
 
+// ⚡ Active Socket User Tracker (socket.id -> { userId, role })
+const activeUsers = new Map();
+
+// Broadcast updated list of online user IDs to all clients (including Admin Dashboard)
+const broadcastOnlineUsers = () => {
+  const onlineUserIds = Array.from(new Set(Array.from(activeUsers.values()).map(u => u.userId)));
+  io.emit('online_users_list', onlineUserIds);
+};
+
 // Socket.io Real-time Handlers
 io.on('connection', (socket) => {
   console.log('⚡ Socket client connected:', socket.id);
+
+  // 🟢 Triggered when user/driver logs in or opens the app
+  socket.on('user_online', (userData) => {
+    if (userData?.userId) {
+      activeUsers.set(socket.id, { userId: userData.userId, role: userData.role });
+      console.log(`👤 User Online: ${userData.userId} (${userData.role})`);
+      broadcastOnlineUsers();
+    }
+  });
 
   socket.on('join_driver_room', (driverId) => {
     const roomName = getDriverRoomName(driverId);
@@ -66,8 +86,13 @@ io.on('connection', (socket) => {
     io.to(roomName).emit('seat_status_changed', data);
   });
 
+  // 🔴 Triggered when user closes tab or disconnects
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
+    if (activeUsers.has(socket.id)) {
+      activeUsers.delete(socket.id);
+      broadcastOnlineUsers();
+    }
   });
 });
 

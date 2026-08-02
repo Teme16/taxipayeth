@@ -32,8 +32,8 @@ export default function AuthPage({ onLoginSuccess }) {
 
     try {
       const res = await axios.post('http://localhost:5001/api/auth/send-telegram-code', {
-        phone: formData.phone,
-        telegramChatId: formData.telegramChatId
+        phone: formData.phone.trim(),
+        telegramChatId: formData.telegramChatId.trim()
       });
 
       if (res.data.success) {
@@ -89,12 +89,23 @@ export default function AuthPage({ onLoginSuccess }) {
     setSuccessMsg('');
 
     const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
+    
+    // Clean up payload (trim phone numbers and whitespace)
     const payload = isLogin
-      ? { phone: formData.phone, password: formData.password }
-      : { ...formData, role };
+      ? { 
+          phone: formData.phone.trim(), 
+          password: formData.password 
+        }
+      : { 
+          ...formData, 
+          phone: formData.phone.trim(), 
+          telegramChatId: formData.telegramChatId.trim(),
+          role 
+        };
 
     try {
       const res = await axios.post(`http://localhost:5001${endpoint}`, payload);
+      
       if (res.data.success) {
         if (isLogin) {
           localStorage.setItem('taxi_pay_token', res.data.token);
@@ -104,11 +115,13 @@ export default function AuthPage({ onLoginSuccess }) {
           setIsLogin(true);
           setOtpStep('idle');
           setFormData({ name: '', phone: '', password: '', targaNo: '', telegramChatId: '', code: '' });
-          alert('Registration successful! Please login.');
+          alert('Registration successful! Please login with your credentials.');
         }
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Authentication failed. Is backend on port 5001?');
+      // Direct error string extraction from backend status 400 response
+      const serverMessage = err.response?.data?.message;
+      setError(serverMessage || 'Authentication failed. Check your phone/password or backend status.');
     } finally {
       setLoading(false);
     }
@@ -123,22 +136,22 @@ export default function AuthPage({ onLoginSuccess }) {
 
   return (
     <div className="max-w-md mx-auto w-full text-white animate-fadeIn">
-      <div className="bg-charcoal-card rounded-3xl p-6 shadow-2xl border border-neutral-700/80">
+      <div className="bg-neutral-900 rounded-3xl p-6 shadow-2xl border border-neutral-800">
         <div className="text-center mb-6">
           <h2 className="text-3xl font-black">{isLogin ? 'Welcome Back' : 'Create Account'}</h2>
           <p className="text-gray-400 text-xs mt-1">
-            {isLogin ? 'Sign in to access your Taxi Pay portal' : 'Choose your role and register'}
+            {isLogin ? 'Sign in to access your TaxiPay portal' : 'Choose your role and register'}
           </p>
         </div>
 
         {error && (
-          <div className="bg-red-500/20 border border-red-500 text-red-300 text-xs p-3 rounded-xl mb-4 text-center">
+          <div className="bg-red-500/20 border border-red-500 text-red-300 text-xs p-3 rounded-xl mb-4 text-center font-medium">
             {error}
           </div>
         )}
 
         {successMsg && (
-          <div className="bg-emerald-500/20 border border-emerald-500 text-emerald-300 text-xs p-3 rounded-xl mb-4 text-center">
+          <div className="bg-emerald-500/20 border border-emerald-500 text-emerald-300 text-xs p-3 rounded-xl mb-4 text-center font-medium">
             {successMsg}
           </div>
         )}
@@ -147,7 +160,7 @@ export default function AuthPage({ onLoginSuccess }) {
           {!isLogin && (
             <>
               {/* Role Toggle for Registration */}
-              <div className="flex bg-neutral-900 p-1 rounded-xl mb-3 border border-neutral-800">
+              <div className="flex bg-neutral-950 p-1 rounded-xl mb-3 border border-neutral-800">
                 <button
                   type="button"
                   onClick={() => setRole('passenger')}
@@ -171,7 +184,7 @@ export default function AuthPage({ onLoginSuccess }) {
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full bg-neutral-900 border border-neutral-800 focus:border-taxi-blue-primary rounded-xl p-3 text-sm text-white outline-none"
+                  className="w-full bg-neutral-950 border border-neutral-800 focus:border-taxi-blue-primary rounded-xl p-3 text-sm text-white outline-none"
                   placeholder="e.g. Abebe Bikila"
                 />
               </div>
@@ -184,7 +197,7 @@ export default function AuthPage({ onLoginSuccess }) {
                     required
                     value={formData.targaNo}
                     onChange={(e) => setFormData({ ...formData, targaNo: e.target.value })}
-                    className="w-full bg-neutral-900 border border-neutral-800 focus:border-taxi-blue-primary rounded-xl p-3 text-sm text-white outline-none font-mono"
+                    className="w-full bg-neutral-950 border border-neutral-800 focus:border-taxi-blue-primary rounded-xl p-3 text-sm text-white outline-none font-mono"
                     placeholder="e.g. AA-3-A12345"
                   />
                 </div>
@@ -200,72 +213,71 @@ export default function AuthPage({ onLoginSuccess }) {
               required
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className="w-full bg-neutral-900 border border-neutral-800 focus:border-taxi-blue-primary rounded-xl p-3 text-sm text-white outline-none font-mono"
+              className="w-full bg-neutral-950 border border-neutral-800 focus:border-taxi-blue-primary rounded-xl p-3 text-sm text-white outline-none font-mono"
               placeholder="0912345678"
             />
           </div>
 
           {/* Registration Telegram Section */}
-{!isLogin && (
-  <div className="p-3 bg-neutral-900/60 border border-neutral-800 rounded-2xl space-y-3">
-    
-    {/* If verified, hide inputs and show a sleek green status message */}
-    {otpStep === 'verified' ? (
-      <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-xl text-emerald-400 text-xs font-bold">
-        <span>✓ Telegram ID Verified</span>
-        <span className="text-[10px] opacity-75">Ready to Register</span>
-      </div>
-    ) : (
-      <>
-        <div>
-          <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Telegram Chat ID</label>
-          <input
-            type="text"
-            value={formData.telegramChatId}
-            onChange={(e) => setFormData({ ...formData, telegramChatId: e.target.value })}
-            className="w-full bg-neutral-950 border border-neutral-800 focus:border-taxi-blue-primary rounded-xl p-3 text-sm text-white outline-none font-mono"
-            placeholder="e.g. 123456789"
-          />
-        </div>
+          {!isLogin && (
+            <div className="p-3 bg-neutral-950/60 border border-neutral-800 rounded-2xl space-y-3">
+              {otpStep === 'verified' ? (
+                <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-xl text-emerald-400 text-xs font-bold">
+                  <span>✓ Telegram ID Verified</span>
+                  <span className="text-[10px] opacity-75">Ready to Register</span>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Telegram Chat ID</label>
+                    <input
+                      type="text"
+                      value={formData.telegramChatId}
+                      onChange={(e) => setFormData({ ...formData, telegramChatId: e.target.value })}
+                      className="w-full bg-neutral-900 border border-neutral-800 focus:border-taxi-blue-primary rounded-xl p-3 text-sm text-white outline-none font-mono"
+                      placeholder="e.g. 123456789"
+                    />
+                  </div>
 
-        {otpStep === 'idle' && (
-          <button
-            type="button"
-            onClick={handleSendTelegramCode}
-            disabled={loading}
-            className="w-full bg-neutral-800 hover:bg-neutral-700 text-xs text-blue-400 font-bold py-2.5 rounded-xl border border-blue-500/30 transition disabled:opacity-50"
-          >
-            {loading ? 'Sending Code...' : 'Send Verification Code via Telegram'}
-          </button>
-        )}
+                  {otpStep === 'idle' && (
+                    <button
+                      type="button"
+                      onClick={handleSendTelegramCode}
+                      disabled={loading}
+                      className="w-full bg-neutral-800 hover:bg-neutral-700 text-xs text-blue-400 font-bold py-2.5 rounded-xl border border-blue-500/30 transition disabled:opacity-50"
+                    >
+                      {loading ? 'Sending Code...' : 'Send Verification Code via Telegram'}
+                    </button>
+                  )}
 
-        {otpStep === 'code_sent' && (
-          <div>
-            <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Telegram OTP Code</label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                maxLength={6}
-                value={formData.code}
-                onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                className="w-full bg-neutral-950 border border-neutral-800 text-center font-mono text-base tracking-widest rounded-xl p-2.5 text-white"
-                placeholder="123456"
-              />
-              <button
-                type="button"
-                onClick={handleVerifyCode}
-                disabled={loading}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 rounded-xl transition disabled:opacity-50"
-              >
-                {loading ? 'Verifying...' : 'Verify'}
-              </button>
+                  {otpStep === 'code_sent' && (
+                    <div>
+                      <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Telegram OTP Code</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          maxLength={6}
+                          value={formData.code}
+                          onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                          className="w-full bg-neutral-900 border border-neutral-800 text-center font-mono text-base tracking-widest rounded-xl p-2.5 text-white"
+                          placeholder="123456"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleVerifyCode}
+                          disabled={loading}
+                          className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 rounded-xl transition disabled:opacity-50"
+                        >
+                          {loading ? 'Verifying...' : 'Verify'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
-          </div>
-        )}
-      </>
-    )}
-  </div>
-)}
+          )}
+
           {/* Password Input */}
           <div>
             <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Password</label>
@@ -274,7 +286,7 @@ export default function AuthPage({ onLoginSuccess }) {
               required
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="w-full bg-neutral-900 border border-neutral-800 focus:border-taxi-blue-primary rounded-xl p-3 text-sm text-white outline-none"
+              className="w-full bg-neutral-950 border border-neutral-800 focus:border-taxi-blue-primary rounded-xl p-3 text-sm text-white outline-none"
               placeholder="••••••••"
             />
           </div>
@@ -291,7 +303,7 @@ export default function AuthPage({ onLoginSuccess }) {
         <div className="text-center mt-6 pt-4 border-t border-neutral-800">
           <button
             onClick={resetFormState}
-            className="text-xs text-gray-400 hover:text-white transition"
+            className="text-xs text-gray-400 hover:text-white transition cursor-pointer"
           >
             {isLogin ? "Don't have an account? Register" : 'Already registered? Sign In'}
           </button>

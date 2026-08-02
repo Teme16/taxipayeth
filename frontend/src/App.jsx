@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import PassengerPage from './components/PassengerPage';
 import DriverPage from './components/DriverPage';
+import AdminDashboard from './components/AdminDashboard'; // 👈 Import Admin Dashboard
 import SplashScreen from './components/SplashScreen';
 import AuthPage from './components/AuthPage';
 
@@ -12,7 +13,11 @@ function App() {
     // Check local storage for persistent session
     const storedUser = localStorage.getItem('taxi_pay_user');
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        console.error('Failed to parse stored user data', e);
+      }
     }
   }, []);
 
@@ -30,14 +35,18 @@ function App() {
     <div className="container mx-auto px-4 py-8 min-h-screen flex flex-col items-center justify-center">
       {/* Logged in User Bar */}
       {user && (
-        <div className="w-full max-w-md mb-6 flex justify-between items-center bg-neutral-900/80 px-4 py-2.5 rounded-2xl border border-neutral-800 backdrop-blur-md">
+        <div className="w-full max-w-4xl mb-6 flex justify-between items-center bg-neutral-900/80 px-4 py-2.5 rounded-2xl border border-neutral-800 backdrop-blur-md">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full bg-taxi-blue-primary flex items-center justify-center font-bold text-white text-xs uppercase">
+            <div className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-white text-xs uppercase ${
+              user.role === 'admin' || user.isAdmin ? 'bg-amber-500' : 'bg-taxi-blue-primary'
+            }`}>
               {user.name ? user.name[0] : 'U'}
             </div>
             <div>
               <p className="text-xs font-bold text-white leading-tight">{user.name}</p>
-              <p className="text-[10px] text-gray-400 capitalize">{user.role} Portal</p>
+              <p className="text-[10px] text-gray-400 capitalize">
+                {user.role === 'admin' || user.isAdmin ? '👑 System Administrator' : `${user.role} Portal`}
+              </p>
             </div>
           </div>
           <button
@@ -53,9 +62,14 @@ function App() {
       <main className="w-full">
         {!user ? (
           <AuthPage onLoginSuccess={(userData) => setUser(userData)} />
+        ) : user.role === 'admin' || user.isAdmin ? (
+          /* Admin View */
+          <AdminDashboard />
         ) : user.role === 'passenger' ? (
+          /* Passenger View */
           <PassengerPage user={user} />
         ) : (
+          /* Driver View */
           <DriverPage
             driverName={user.name || user.driverData?.driverName}
             driverId={user.driverData?.driverId || user.driverId || user._id || user.id}
