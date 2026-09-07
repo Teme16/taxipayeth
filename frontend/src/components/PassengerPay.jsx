@@ -16,11 +16,13 @@ export default function PassengerPay({ driverId = "65c2b9f1e4b0a123456789ab" }) 
     
     setLoading(true);
     try {
-      const response = await axios.post('http://localhost:5001/api/payments/process-fare', {
+      const response = await axios.post('http://localhost:5001/api/payments/checkout', {
         driverId,
         passengerPhone: phone,
-        seatCount: seats,
-        baseFare: BASE_FARE
+        seats,
+        amount: seats * BASE_FARE,
+        targaNo: '',
+        passengerName: '',
       });
       
       if (response.data.success) {

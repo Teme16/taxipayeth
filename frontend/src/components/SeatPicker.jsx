@@ -1,5 +1,5 @@
 import React from 'react';
-import { Armchair, CheckCircle2 } from 'lucide-react';
+import { Armchair } from 'lucide-react';
 
 export default function SeatPicker({ selectedSeats, setSelectedSeats, seatStates = {} }) {
   // Total 15 seats structured by minibus rows

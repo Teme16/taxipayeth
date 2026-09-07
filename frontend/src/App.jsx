@@ -67,7 +67,10 @@ function App() {
           <AdminDashboard />
         ) : user.role === 'passenger' ? (
           /* Passenger View */
-          <PassengerPage user={user} />
+          <PassengerPage user={user} onUserUpdate={(updated) => {
+            localStorage.setItem('taxi_pay_user', JSON.stringify(updated));
+            setUser(updated);
+          }} />
         ) : (
           /* Driver View */
           <DriverPage

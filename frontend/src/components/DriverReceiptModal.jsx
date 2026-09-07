@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Receipt, CheckCircle, Search, Calendar, Hash, DollarSign, RefreshCw } from 'lucide-react';
+import { X, Receipt, CheckCircle, Search, Calendar, Hash, RefreshCw } from 'lucide-react';
 
 export default function DriverReceiptModal({ transactions, totalEarnings, onRefresh, onClose }) {
   const [searchTerm, setSearchTerm] = useState('');

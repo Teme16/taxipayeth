@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import jsQR from 'jsqr';
-import { Camera, X, RefreshCw } from 'lucide-react';
+import { Camera, X } from 'lucide-react';
 
 export default function QRScanner({ onScanSuccess, onClose }) {
   const videoRef = useRef(null);

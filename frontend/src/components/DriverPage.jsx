@@ -34,7 +34,7 @@ export default function DriverPage({
     return `http://localhost:5001/uploads/${cleanPath}`;
   };
 
-  const [profilePicUrl, setProfilePicUrl] = useState(formatPicUrl(driver?.profilePic));
+  const [profilePicUrl, setProfilePicUrl] = useState(formatPicUrl(driver?.profilePic || driver?.driverData?.profileImage));
 
   // Modals & UI States
   const [showQRModal, setShowQRModal] = useState(false);
@@ -45,10 +45,11 @@ export default function DriverPage({
   // Form Data
   const [editFormData, setEditFormData] = useState({
     fullName: activeDriverName,
+    mobileNumber: driver?.mobileNumber || driver?.phone || '',
+    targaNo: activeTargaNo,
     birthDate: driver?.birthDate || '',
-    licenseNumber: driver?.licenseNumber || '',
+    licenseNumber: driver?.licenseNumber || driver?.driverData?.licenseNo || '',
     emergencyContact: driver?.emergencyContact || '',
-    mobileNumber: driver?.mobileNumber || '',
     address: driver?.address || ''
   });
 
@@ -74,17 +75,18 @@ export default function DriverPage({
   useEffect(() => {
     if (initialDriver) {
       setDriver(initialDriver);
-      setProfilePicUrl(formatPicUrl(initialDriver.profilePic));
+      setProfilePicUrl(formatPicUrl(initialDriver.profilePic || initialDriver.driverData?.profileImage));
       setEditFormData({
-        fullName: initialDriver.fullName || driverName,
+        fullName: initialDriver.fullName || initialDriver.name || driverName,
+        mobileNumber: initialDriver.mobileNumber || initialDriver.phone || '',
+        targaNo: initialDriver.targaNo || initialDriver.driverData?.targaNo || targaNo,
         birthDate: initialDriver.birthDate || '',
-        licenseNumber: initialDriver.licenseNumber || '',
+        licenseNumber: initialDriver.licenseNumber || initialDriver.driverData?.licenseNo || '',
         emergencyContact: initialDriver.emergencyContact || '',
-        mobileNumber: initialDriver.mobileNumber || '',
         address: initialDriver.address || ''
       });
     }
-  }, [initialDriver, driverName]);
+  }, [initialDriver, driverName, targaNo]);
 
   // Fetch driver data & listen for socket updates
   useEffect(() => {
@@ -92,18 +94,22 @@ export default function DriverPage({
 
     const fetchDriverProfile = async () => {
       try {
-        const res = await fetch(`http://localhost:5001/api/drivers/${activeDriverId}`);
+        const token = localStorage.getItem('taxi_pay_token');
+        const res = await fetch(`http://localhost:5001/api/drivers/${activeDriverId}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
         if (!res.ok) return;
         const data = await res.json();
         if (data.success && data.driver) {
           setDriver(data.driver);
-          setProfilePicUrl(formatPicUrl(data.driver.profilePic));
+          setProfilePicUrl(formatPicUrl(data.driver.profilePic || data.driver.driverData?.profileImage));
           setEditFormData({
-            fullName: data.driver.fullName || activeDriverName,
+            fullName: data.driver.fullName || data.driver.name || activeDriverName,
+            mobileNumber: data.driver.mobileNumber || data.driver.phone || '',
+            targaNo: data.driver.targaNo || data.driver.driverData?.targaNo || activeTargaNo,
             birthDate: data.driver.birthDate || '',
-            licenseNumber: data.driver.licenseNumber || '',
+            licenseNumber: data.driver.licenseNumber || data.driver.driverData?.licenseNo || '',
             emergencyContact: data.driver.emergencyContact || '',
-            mobileNumber: data.driver.mobileNumber || '',
             address: data.driver.address || ''
           });
         }
@@ -131,7 +137,6 @@ export default function DriverPage({
         const numericAmount = Number(amount);
         setTotalEarnings((prev) => prev + numericAmount);
 
-        // Append to transactions array
         setTransactions((prev) => [
           {
             id: transactionId || Date.now(),
@@ -153,7 +158,7 @@ export default function DriverPage({
 
     socket.on('seat_status_changed', handleSeatStatusChange);
     return () => socket.off('seat_status_changed', handleSeatStatusChange);
-  }, [activeDriverId, activeDriverName]);
+  }, [activeDriverId, activeDriverName, activeTargaNo]);
 
   const toggleSeatStatus = (seatNum) => {
     setSeatStates((prev) => {
@@ -198,17 +203,23 @@ export default function DriverPage({
       const data = new FormData();
       data.append('driverId', activeDriverId);
       data.append('fullName', editFormData.fullName);
+      data.append('mobileNumber', editFormData.mobileNumber);
+      data.append('targaNo', editFormData.targaNo);
       data.append('birthDate', editFormData.birthDate);
       data.append('licenseNumber', editFormData.licenseNumber);
       data.append('emergencyContact', editFormData.emergencyContact);
-      data.append('mobileNumber', editFormData.mobileNumber);
       data.append('address', editFormData.address);
 
       if (newProfilePic) data.append('profilePic', newProfilePic);
       if (newDigitalId) data.append('digitalId', newDigitalId);
 
+      const token = localStorage.getItem('taxi_pay_token');
+
       const response = await fetch('http://localhost:5001/api/drivers/complete-profile', {
         method: 'POST',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: data
       });
 
@@ -216,11 +227,27 @@ export default function DriverPage({
 
       if (response.ok && result.success) {
         setDriver(result.driver);
-        setProfilePicUrl(formatPicUrl(result.driver.profilePic));
+        setProfilePicUrl(formatPicUrl(result.driver.profilePic || result.driver.driverData?.profileImage));
+        
+        // Sync editFormData with the newly saved backend data
+        setEditFormData({
+          fullName: result.driver.fullName || result.driver.name || activeDriverName,
+          mobileNumber: result.driver.mobileNumber || result.driver.phone || '',
+          targaNo: result.driver.targaNo || result.driver.driverData?.targaNo || activeTargaNo,
+          birthDate: result.driver.birthDate || '',
+          licenseNumber: result.driver.licenseNumber || result.driver.driverData?.licenseNo || '',
+          emergencyContact: result.driver.emergencyContact || '',
+          address: result.driver.address || ''
+        });
+
+        if (result.user) {
+          localStorage.setItem('taxi_pay_user', JSON.stringify(result.user));
+        }
+
         setIsEditingProfile(false);
         setNotification({
           title: '✅ Profile Saved',
-          message: 'Your profile details have been saved.'
+          message: 'Your profile details have been saved to the database.'
         });
         setTimeout(() => setNotification(null), 5000);
       } else {
@@ -350,104 +377,120 @@ export default function DriverPage({
         </div>
       </div>
 
-      {/* DRIVER PROFILE MODAL */}
+      {/* DRIVER PROFILE MODAL - PREMIUM REDESIGN */}
       {showProfileModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-neutral-900 border border-neutral-800 w-full max-w-md rounded-3xl p-6 shadow-2xl relative space-y-4 text-white max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-xl transition-opacity duration-300"></div>
+          <div className="relative w-full max-w-md bg-neutral-900/90 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 shadow-[0_0_50px_-12px_rgba(16,185,129,0.3)] text-white max-h-[90vh] overflow-y-auto overflow-x-hidden transform transition-all duration-300 scale-100">
             
-            <div className="flex justify-between items-center border-b border-neutral-800 pb-3">
-              <h3 className="text-lg font-black">{isEditingProfile ? 'Edit Profile' : 'Driver Profile'}</h3>
+            {/* Header */}
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-black bg-linear-to-r from-emerald-400 to-teal-200 bg-clip-text text-transparent">
+                {isEditingProfile ? 'Update Profile' : 'Driver Identity'}
+              </h3>
               <div className="flex items-center gap-2">
                 {!isEditingProfile && (
                   <button
                     onClick={() => setIsEditingProfile(true)}
-                    className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                    className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-4 py-2 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-[0_0_15px_-3px_rgba(16,185,129,0.2)]"
                   >
                     <Edit3 size={14} /> Edit
                   </button>
                 )}
                 <button
                   onClick={() => setShowProfileModal(false)}
-                  className="text-gray-400 hover:text-white p-1.5 rounded-xl bg-neutral-800 cursor-pointer"
+                  className="text-gray-400 hover:text-white p-2 rounded-2xl bg-neutral-800/50 hover:bg-neutral-700/50 transition cursor-pointer"
                 >
-                  <X size={18} />
+                  <X size={20} />
                 </button>
               </div>
             </div>
 
             {profileError && (
-              <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-2xl text-xs flex items-center gap-2">
-                <ShieldAlert size={16} />
+              <div className="mb-4 bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-2xl text-xs flex items-center gap-2 shadow-inner">
+                <ShieldAlert size={16} className="shrink-0" />
                 <span>{profileError}</span>
               </div>
             )}
 
             {!isEditingProfile ? (
-              <div className="space-y-4">
-                <div className="flex flex-col items-center text-center space-y-2">
-                  <div className="w-24 h-24 rounded-full border-4 border-emerald-500 overflow-hidden shadow-xl bg-neutral-950 flex items-center justify-center">
-                    {profilePicUrl ? (
-                      <img src={profilePicUrl} alt={activeDriverName} className="w-full h-full object-cover" />
-                    ) : (
-                      <User size={48} className="text-emerald-400" />
-                    )}
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {/* ID Card Top */}
+                <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-neutral-800/80 to-neutral-900/80 border border-white/5 p-6 shadow-2xl flex flex-col items-center text-center space-y-4">
+                  <div className="absolute top-0 inset-x-0 h-1/2 bg-linear-to-b from-emerald-500/10 to-transparent"></div>
+                  
+                  <div className="relative w-28 h-28 rounded-full p-1 bg-linear-to-tr from-emerald-500 to-teal-300 shadow-[0_0_30px_-5px_rgba(16,185,129,0.5)]">
+                    <div className="w-full h-full rounded-full overflow-hidden bg-neutral-950 flex items-center justify-center">
+                      {profilePicUrl ? (
+                        <img src={profilePicUrl} alt={activeDriverName} className="w-full h-full object-cover transition-transform duration-500 hover:scale-110" />
+                      ) : (
+                        <User size={48} className="text-emerald-400/50" />
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-xl font-black">{activeDriverName}</h3>
-                    <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 inline-block mt-1">
-                      License: {driver?.licenseNumber || 'Not set'}
-                    </span>
+                  
+                  <div className="relative z-10">
+                    <h3 className="text-2xl font-black tracking-tight">{activeDriverName}</h3>
+                    <div className="flex items-center justify-center gap-2 mt-2">
+                      <span className="text-xs font-mono font-bold text-emerald-300 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 shadow-inner">
+                        ID: {driver?.licenseNumber || driver?.driverData?.licenseNo || 'PENDING'}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-4 space-y-3 text-xs">
-                  <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
-                    <span className="text-gray-400 flex items-center gap-1.5"><ShieldCheck size={14} className="text-emerald-400" /> Vehicle Plate (Targa)</span>
-                    <span className="font-mono font-bold text-white">{activeTargaNo}</span>
+                {/* Details Grid */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-neutral-800/40 backdrop-blur-md border border-white/5 rounded-2xl p-4 flex flex-col justify-center transition-all hover:bg-neutral-800/60">
+                    <span className="text-[10px] text-gray-400 uppercase font-bold flex items-center gap-1.5 mb-1"><ShieldCheck size={12} className="text-emerald-400" /> Targa (Plate)</span>
+                    <span className="font-mono font-bold text-sm text-white">{activeTargaNo}</span>
                   </div>
-                  <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
-                    <span className="text-gray-400 flex items-center gap-1.5"><Phone size={14} className="text-blue-400" /> Mobile Number</span>
-                    <span className="font-mono text-white">{driver?.mobileNumber || editFormData.mobileNumber || 'Not provided'}</span>
+                  <div className="bg-neutral-800/40 backdrop-blur-md border border-white/5 rounded-2xl p-4 flex flex-col justify-center transition-all hover:bg-neutral-800/60">
+                    <span className="text-[10px] text-gray-400 uppercase font-bold flex items-center gap-1.5 mb-1"><Phone size={12} className="text-blue-400" /> Phone</span>
+                    <span className="font-mono font-bold text-sm text-white">{driver?.mobileNumber || driver?.phone || editFormData.mobileNumber || 'N/A'}</span>
                   </div>
-                  <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
-                    <span className="text-gray-400 flex items-center gap-1.5"><MapPin size={14} className="text-pink-400" /> Address</span>
-                    <span className="text-white">{driver?.address || editFormData.address || 'Not provided'}</span>
+                  <div className="bg-neutral-800/40 backdrop-blur-md border border-white/5 rounded-2xl p-4 flex flex-col justify-center transition-all hover:bg-neutral-800/60">
+                    <span className="text-[10px] text-gray-400 uppercase font-bold flex items-center gap-1.5 mb-1"><MapPin size={12} className="text-pink-400" /> Address</span>
+                    <span className="font-medium text-sm text-white">{driver?.address || editFormData.address || 'N/A'}</span>
                   </div>
-                  <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
-                    <span className="text-gray-400 flex items-center gap-1.5"><Calendar size={14} className="text-amber-400" /> Birth Date</span>
-                    <span className="text-white">{driver?.birthDate || 'Not provided'}</span>
+                  <div className="bg-neutral-800/40 backdrop-blur-md border border-white/5 rounded-2xl p-4 flex flex-col justify-center transition-all hover:bg-neutral-800/60">
+                    <span className="text-[10px] text-gray-400 uppercase font-bold flex items-center gap-1.5 mb-1"><Calendar size={12} className="text-amber-400" /> Birth Date</span>
+                    <span className="font-medium text-sm text-white">{driver?.birthDate || 'N/A'}</span>
                   </div>
-                  <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
-                    <span className="text-gray-400 flex items-center gap-1.5"><Phone size={14} className="text-red-400" /> Emergency Phone</span>
-                    <span className="font-mono text-white">{driver?.emergencyContact || 'Not provided'}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-400 flex items-center gap-1.5"><FileText size={14} className="text-purple-400" /> Digital ID Document</span>
-                    <span className={`font-bold text-[10px] px-2 py-0.5 rounded-full ${driver?.digitalIdDoc ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}`}>
-                      {driver?.digitalIdDoc ? 'Uploaded' : 'Missing'}
+                  <div className="col-span-2 bg-neutral-800/40 backdrop-blur-md border border-white/5 rounded-2xl p-4 flex items-center justify-between transition-all hover:bg-neutral-800/60">
+                    <div>
+                      <span className="text-[10px] text-gray-400 uppercase font-bold flex items-center gap-1.5 mb-1"><FileText size={12} className="text-purple-400" /> Verification Docs</span>
+                      <span className="text-xs font-medium text-gray-300">Digital ID / Fayda</span>
+                    </div>
+                    <span className={`text-[10px] font-black uppercase px-3 py-1.5 rounded-xl shadow-inner ${driver?.digitalIdDoc || driver?.driverData?.documentUrl ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}>
+                      {driver?.digitalIdDoc || driver?.driverData?.documentUrl ? 'Verified' : 'Missing'}
                     </span>
                   </div>
                 </div>
 
                 <button
                   onClick={() => setIsEditingProfile(true)}
-                  className="w-full bg-emerald-500 hover:bg-emerald-600 text-neutral-950 font-bold py-3 rounded-2xl text-xs transition cursor-pointer flex items-center justify-center gap-2"
+                  className="w-full bg-linear-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-neutral-950 font-black py-4 rounded-2xl text-sm transition-all transform hover:scale-[1.02] shadow-[0_10px_20px_-10px_rgba(16,185,129,0.5)] cursor-pointer flex items-center justify-center gap-2"
                 >
-                  <Edit3 size={16} /> Edit Profile
+                  <Edit3 size={18} /> Update Information
                 </button>
               </div>
             ) : (
-              <form onSubmit={handleSaveProfile} className="space-y-4">
-                <div className="flex flex-col items-center gap-2">
-                  <label className="text-xs font-bold text-gray-300">Change Profile Photo</label>
-                  <div className="relative w-20 h-20 rounded-full bg-neutral-950 border-2 border-dashed border-emerald-500/50 flex items-center justify-center overflow-hidden cursor-pointer hover:border-emerald-400 transition">
-                    {profilePicPreview ? (
-                      <img src={profilePicPreview} alt="Preview" className="w-full h-full object-cover" />
-                    ) : profilePicUrl ? (
-                      <img src={profilePicUrl} alt="Current" className="w-full h-full object-cover" />
-                    ) : (
-                      <Camera size={24} className="text-gray-400" />
-                    )}
+              <form onSubmit={handleSaveProfile} className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="relative w-24 h-24 rounded-full p-1 bg-linear-to-tr from-emerald-500/50 to-transparent flex items-center justify-center overflow-hidden cursor-pointer group hover:from-emerald-400 transition-all shadow-lg">
+                    <div className="w-full h-full bg-neutral-950 rounded-full flex flex-col items-center justify-center relative overflow-hidden border border-white/10">
+                      {profilePicPreview ? (
+                        <img src={profilePicPreview} alt="Preview" className="w-full h-full object-cover group-hover:opacity-50 transition" />
+                      ) : profilePicUrl ? (
+                        <img src={profilePicUrl} alt="Current" className="w-full h-full object-cover group-hover:opacity-50 transition" />
+                      ) : (
+                        <Camera size={28} className="text-gray-500 group-hover:text-emerald-400 transition" />
+                      )}
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-sm">
+                        <Camera size={24} className="text-white" />
+                      </div>
+                    </div>
                     <input
                       type="file"
                       accept="image/*"
@@ -455,82 +498,95 @@ export default function DriverPage({
                       className="absolute inset-0 opacity-0 cursor-pointer"
                     />
                   </div>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Profile Photo</span>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-gray-300">Full Name</label>
-                  <input
-                    type="text"
-                    value={editFormData.fullName}
-                    onChange={(e) => setEditFormData({ ...editFormData, fullName: e.target.value })}
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-gray-300">Mobile Phone</label>
+                <div className="space-y-4">
+                  <div className="group">
+                    <label className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-1 block transition-colors">Full Name</label>
                     <input
-                      type="tel"
-                      value={editFormData.mobileNumber}
-                      onChange={(e) => setEditFormData({ ...editFormData, mobileNumber: e.target.value })}
-                      className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      type="text"
+                      value={editFormData.fullName}
+                      onChange={(e) => setEditFormData({ ...editFormData, fullName: e.target.value })}
+                      className="w-full bg-neutral-950/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 focus:bg-neutral-900/80 transition-all shadow-inner"
+                      required
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-gray-300">Emergency Phone</label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="group">
+                      <label className="text-[10px] font-bold text-gray-400 group-focus-within:text-emerald-400 uppercase tracking-wider mb-1 block transition-colors">Mobile Phone</label>
+                      <input
+                        type="tel"
+                        value={editFormData.mobileNumber}
+                        onChange={(e) => setEditFormData({ ...editFormData, mobileNumber: e.target.value })}
+                        className="w-full bg-neutral-950/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono focus:bg-neutral-900/80 transition-all shadow-inner"
+                        required
+                      />
+                    </div>
+                    <div className="group">
+                      <label className="text-[10px] font-bold text-gray-400 group-focus-within:text-emerald-400 uppercase tracking-wider mb-1 block transition-colors">Plate Number</label>
+                      <input
+                        type="text"
+                        value={editFormData.targaNo}
+                        onChange={(e) => setEditFormData({ ...editFormData, targaNo: e.target.value })}
+                        className="w-full bg-neutral-950/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono focus:bg-neutral-900/80 transition-all shadow-inner"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="group">
+                      <label className="text-[10px] font-bold text-gray-400 group-focus-within:text-emerald-400 uppercase tracking-wider mb-1 block transition-colors">Birth Date</label>
+                      <input
+                        type="date"
+                        value={editFormData.birthDate}
+                        onChange={(e) => setEditFormData({ ...editFormData, birthDate: e.target.value })}
+                        className="w-full bg-neutral-950/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 focus:bg-neutral-900/80 transition-all shadow-inner"
+                      />
+                    </div>
+                    <div className="group">
+                      <label className="text-[10px] font-bold text-gray-400 group-focus-within:text-emerald-400 uppercase tracking-wider mb-1 block transition-colors">License No.</label>
+                      <input
+                        type="text"
+                        value={editFormData.licenseNumber}
+                        onChange={(e) => setEditFormData({ ...editFormData, licenseNumber: e.target.value })}
+                        className="w-full bg-neutral-950/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono focus:bg-neutral-900/80 transition-all shadow-inner"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="group">
+                    <label className="text-[10px] font-bold text-gray-400 group-focus-within:text-emerald-400 uppercase tracking-wider mb-1 block transition-colors">Emergency Phone</label>
                     <input
                       type="tel"
                       value={editFormData.emergencyContact}
                       onChange={(e) => setEditFormData({ ...editFormData, emergencyContact: e.target.value })}
-                      className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-gray-300">Birth Date</label>
-                    <input
-                      type="date"
-                      value={editFormData.birthDate}
-                      onChange={(e) => setEditFormData({ ...editFormData, birthDate: e.target.value })}
-                      className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-neutral-950/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono focus:bg-neutral-900/80 transition-all shadow-inner"
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-gray-300">License No.</label>
+                  <div className="group">
+                    <label className="text-[10px] font-bold text-gray-400 group-focus-within:text-emerald-400 uppercase tracking-wider mb-1 block transition-colors">Address / City</label>
                     <input
                       type="text"
-                      value={editFormData.licenseNumber}
-                      onChange={(e) => setEditFormData({ ...editFormData, licenseNumber: e.target.value })}
-                      className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      value={editFormData.address}
+                      onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })}
+                      className="w-full bg-neutral-950/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 focus:bg-neutral-900/80 transition-all shadow-inner"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-gray-300">Address / City</label>
-                  <input
-                    type="text"
-                    value={editFormData.address}
-                    onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })}
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-gray-300">Update Digital ID Photo</label>
-                  <div className="relative w-full h-20 bg-neutral-950 border border-dashed border-neutral-800 rounded-xl flex items-center justify-center p-2 cursor-pointer hover:border-emerald-500/50 transition">
+                <div className="group">
+                  <label className="text-[10px] font-bold text-gray-400 group-focus-within:text-emerald-400 uppercase tracking-wider mb-1 block transition-colors">Update Digital ID Document</label>
+                  <div className="relative w-full h-24 bg-neutral-950/50 border border-dashed border-white/20 rounded-2xl flex flex-col items-center justify-center p-2 cursor-pointer hover:border-emerald-500 hover:bg-emerald-500/5 transition-all">
                     {digitalIdPreview ? (
-                      <img src={digitalIdPreview} alt="ID Preview" className="h-full object-contain rounded" />
+                      <img src={digitalIdPreview} alt="ID Preview" className="h-full object-contain rounded-lg" />
                     ) : (
                       <div className="text-center space-y-1">
-                        <Upload size={16} className="mx-auto text-gray-400" />
-                        <span className="text-[10px] text-gray-400 block">Upload ID Document</span>
+                        <Upload size={20} className="mx-auto text-gray-500 group-hover:text-emerald-400 transition" />
+                        <span className="text-[10px] font-medium text-gray-400 block group-hover:text-emerald-300 transition">Tap or drag to upload ID</span>
                       </div>
                     )}
                     <input
@@ -542,20 +598,24 @@ export default function DriverPage({
                   </div>
                 </div>
 
-                <div className="flex gap-2 pt-2">
+                <div className="flex gap-3 pt-4 border-t border-white/5">
                   <button
                     type="button"
                     onClick={() => setIsEditingProfile(false)}
-                    className="w-1/2 bg-neutral-800 hover:bg-neutral-700 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer"
+                    className="w-1/3 bg-neutral-800/80 hover:bg-neutral-700 text-white font-bold py-3.5 rounded-2xl text-xs transition cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={savingProfile}
-                    className="w-1/2 bg-emerald-500 hover:bg-emerald-600 text-neutral-950 font-bold py-2.5 rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1 disabled:opacity-50"
+                    className="w-2/3 bg-linear-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-neutral-950 font-black py-3.5 rounded-2xl text-xs transition-all transform hover:scale-[1.02] shadow-[0_10px_20px_-10px_rgba(16,185,129,0.4)] cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 disabled:transform-none"
                   >
-                    {savingProfile ? 'Saving...' : <><CheckCircle size={14} /> Save Changes</>}
+                    {savingProfile ? (
+                      <span className="flex items-center gap-2"><RefreshCw size={14} className="animate-spin" /> Saving...</span>
+                    ) : (
+                      <><CheckCircle size={16} /> Save Changes</>
+                    )}
                   </button>
                 </div>
               </form>

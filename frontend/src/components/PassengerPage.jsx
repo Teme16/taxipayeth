@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import QRScanner from './QRScanner';
 import SeatPicker from './SeatPicker';
 import ReceiptModal from './ReceiptModal';
-import { QrCode, CheckCircle2, User, ShieldCheck, CreditCard, ChevronRight, RefreshCw, Bell, Smartphone, Building2, Wallet, Receipt } from 'lucide-react';
+import ProfilePage from './ProfilePage';
+import { QrCode, CheckCircle2, User, ShieldCheck, CreditCard, ChevronRight, RefreshCw, Bell, Smartphone, Building2, Wallet, Receipt, UserCircle2 } from 'lucide-react';
 import { io } from 'socket.io-client';
 
 const socket = io('http://localhost:5001');
@@ -12,7 +13,7 @@ const normalizeDriverId = (value) => {
   return String(value).trim();
 };
 
-export default function PassengerPage({ user }) {
+export default function PassengerPage({ user, token, onUserUpdate }) {
   const [showScanner, setShowScanner] = useState(false);
   const [scannedTaxi, setScannedTaxi] = useState(null);
   const [selectedSeats, setSelectedSeats] = useState([]);
@@ -24,6 +25,7 @@ export default function PassengerPage({ user }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   // Generate unique storage key bound directly to the user identity
   const userKey = user?.phone || user?._id || user?.id || user?.name || 'guest';
@@ -168,7 +170,7 @@ export default function PassengerPage({ user }) {
       )}
 
       {/* History Button Bar */}
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-between gap-3">
         <button
           onClick={() => setShowHistoryModal(true)}
           type="button"
@@ -176,9 +178,26 @@ export default function PassengerPage({ user }) {
         >
           <Receipt size={16} /> Transaction History ({receiptHistory.length})
         </button>
+        <button
+          onClick={() => setIsProfileOpen(true)}
+          type="button"
+          className="bg-neutral-900 border border-neutral-800 hover:border-blue-500/50 text-blue-300 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg transition cursor-pointer"
+        >
+          <UserCircle2 size={16} /> Manage Profile
+        </button>
       </div>
 
       {showScanner && <QRScanner onScanSuccess={handleScanSuccess} onClose={() => setShowScanner(false)} />}
+      {isProfileOpen && (
+        <ProfilePage
+          token={token}
+          onClose={() => setIsProfileOpen(false)}
+          onProfileUpdated={(updatedUser) => {
+            if (onUserUpdate) onUserUpdate(updatedUser);
+            setIsProfileOpen(false);
+          }}
+        />
+      )}
 
       {!scannedTaxi && (
         <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-8 text-center flex flex-col items-center shadow-2xl">
