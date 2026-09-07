@@ -14,7 +14,7 @@ export default function DriverProfileSetup({ driverId, initialData = {}, onCompl
 
   const [profilePic, setProfilePic] = useState(null);
   const [profilePicPreview, setProfilePicPreview] = useState(null);
-  
+
   const [digitalId, setDigitalId] = useState(null);
   const [digitalIdPreview, setDigitalIdPreview] = useState(null);
 
@@ -55,7 +55,7 @@ export default function DriverProfileSetup({ driverId, initialData = {}, onCompl
       if (profilePic) data.append('profilePic', profilePic);
       if (digitalId) data.append('digitalId', digitalId);
 
-      const token = localStorage.getItem('taxi_pay_token');
+      const token = localStorage.getItem('taxipay_token');
 
       const response = await fetch('http://localhost:5001/api/drivers/complete-profile', {
         method: 'POST',
@@ -90,7 +90,7 @@ export default function DriverProfileSetup({ driverId, initialData = {}, onCompl
       <div className="absolute top-0 -left-10 w-48 h-48 bg-emerald-500/20 rounded-full mix-blend-screen filter blur-[50px] animate-pulse"></div>
       <div className="absolute bottom-0 -right-10 w-48 h-48 bg-teal-500/20 rounded-full mix-blend-screen filter blur-[50px] animate-pulse delay-1000"></div>
 
-      <div className="relative bg-neutral-900/80 backdrop-blur-2xl border border-white/10 text-white rounded-3xl p-8 shadow-[0_0_50px_-12px_rgba(16,185,129,0.2)]">
+      <div className="relative glass-card backdrop-blur-2xl border border-white/10 text-white rounded-3xl p-8 shadow-[0_0_50px_-12px_rgba(16,185,129,0.2)]">
         <div className="text-center space-y-2 mb-8">
           <div className="inline-flex items-center justify-center p-3 bg-emerald-500/10 rounded-2xl mb-2 border border-emerald-500/20 shadow-inner">
             <User size={28} className="text-emerald-400" />
@@ -104,7 +104,7 @@ export default function DriverProfileSetup({ driverId, initialData = {}, onCompl
         </div>
 
         {error && (
-          <div className="mb-6 bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-2xl text-xs flex items-center gap-3 shadow-inner animate-in slide-in-from-top-2">
+          <div className="mb-6 glass-button-danger border border-red-500/30 text-red-400 p-4 rounded-2xl text-xs flex items-center gap-3 shadow-inner animate-in slide-in-from-top-2">
             <ShieldAlert size={20} className="shrink-0" />
             <span className="font-medium">{error}</span>
           </div>
@@ -112,9 +112,9 @@ export default function DriverProfileSetup({ driverId, initialData = {}, onCompl
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Profile Picture Upload - Prominent */}
-          <div className="flex flex-col items-center gap-3 bg-neutral-950/50 p-6 rounded-3xl border border-white/5 shadow-inner">
+          <div className="flex flex-col items-center gap-3 glass-panel/50 p-6 rounded-3xl border border-white/5 shadow-inner">
             <div className="relative w-28 h-28 rounded-full p-1 bg-linear-to-tr from-emerald-500/50 to-transparent flex items-center justify-center overflow-hidden cursor-pointer group hover:from-emerald-400 transition-all shadow-lg">
-              <div className="w-full h-full bg-neutral-900 rounded-full flex flex-col items-center justify-center relative overflow-hidden border border-white/10">
+              <div className="w-full h-full glass-card rounded-full flex flex-col items-center justify-center relative overflow-hidden border border-white/10">
                 {profilePicPreview ? (
                   <img src={profilePicPreview} alt="Profile Preview" className="w-full h-full object-cover group-hover:opacity-50 transition duration-300" />
                 ) : (
@@ -147,7 +147,7 @@ export default function DriverProfileSetup({ driverId, initialData = {}, onCompl
                 value={formData.fullName}
                 onChange={handleChange}
                 required
-                className="w-full bg-neutral-950/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 focus:bg-neutral-900/80 transition-all shadow-inner"
+                className="w-full glass-input/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 focus:glass-card transition-all shadow-inner"
               />
             </div>
 
@@ -160,7 +160,7 @@ export default function DriverProfileSetup({ driverId, initialData = {}, onCompl
                 value={formData.mobileNumber}
                 onChange={handleChange}
                 required
-                className="w-full bg-neutral-950/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono focus:bg-neutral-900/80 transition-all shadow-inner"
+                className="w-full glass-input/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono focus:glass-card transition-all shadow-inner"
               />
             </div>
 
@@ -175,7 +175,7 @@ export default function DriverProfileSetup({ driverId, initialData = {}, onCompl
                 value={formData.targaNo}
                 onChange={handleChange}
                 required
-                className="w-full bg-neutral-950/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono focus:bg-neutral-900/80 transition-all shadow-inner"
+                className="w-full glass-input/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono focus:glass-card transition-all shadow-inner"
               />
             </div>
 
@@ -190,7 +190,7 @@ export default function DriverProfileSetup({ driverId, initialData = {}, onCompl
                 value={formData.licenseNumber}
                 onChange={handleChange}
                 required
-                className="w-full bg-neutral-950/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono focus:bg-neutral-900/80 transition-all shadow-inner"
+                className="w-full glass-input/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono focus:glass-card transition-all shadow-inner"
               />
             </div>
 
@@ -204,7 +204,7 @@ export default function DriverProfileSetup({ driverId, initialData = {}, onCompl
                 value={formData.birthDate}
                 onChange={handleChange}
                 required
-                className="w-full bg-neutral-950/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 focus:bg-neutral-900/80 transition-all shadow-inner"
+                className="w-full glass-input/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 focus:glass-card transition-all shadow-inner"
               />
             </div>
 
@@ -219,7 +219,7 @@ export default function DriverProfileSetup({ driverId, initialData = {}, onCompl
                 value={formData.emergencyContact}
                 onChange={handleChange}
                 required
-                className="w-full bg-neutral-950/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono focus:bg-neutral-900/80 transition-all shadow-inner"
+                className="w-full glass-input/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono focus:glass-card transition-all shadow-inner"
               />
             </div>
           </div>
@@ -233,18 +233,18 @@ export default function DriverProfileSetup({ driverId, initialData = {}, onCompl
               value={formData.address}
               onChange={handleChange}
               required
-              className="w-full bg-neutral-950/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 focus:bg-neutral-900/80 transition-all shadow-inner"
+              className="w-full glass-input/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 focus:glass-card transition-all shadow-inner"
             />
           </div>
 
           <div className="group">
             <label className="text-[10px] font-bold text-gray-400 group-focus-within:text-emerald-400 uppercase tracking-wider mb-1 block transition-colors">Digital ID / Fayda ID</label>
-            <div className="relative w-full h-32 bg-neutral-950/50 border border-dashed border-white/20 rounded-2xl flex flex-col items-center justify-center p-3 cursor-pointer hover:border-emerald-500 hover:bg-emerald-500/5 transition-all shadow-inner">
+            <div className="relative w-full h-32 glass-panel/50 border border-dashed border-white/20 rounded-2xl flex flex-col items-center justify-center p-3 cursor-pointer hover:border-emerald-500 hover:bg-emerald-500/5 transition-all shadow-inner">
               {digitalIdPreview ? (
                 <img src={digitalIdPreview} alt="Digital ID Preview" className="h-full object-contain rounded-lg" />
               ) : (
                 <div className="text-center space-y-2">
-                  <div className="p-3 bg-neutral-900 rounded-full inline-block border border-white/5 shadow-lg group-hover:border-emerald-500/30 transition-colors">
+                  <div className="p-3 glass-card rounded-full inline-block border border-white/5 shadow-lg group-hover:border-emerald-500/30 transition-colors">
                     <Upload size={20} className="text-gray-400 group-hover:text-emerald-400 transition-colors" />
                   </div>
                   <div>

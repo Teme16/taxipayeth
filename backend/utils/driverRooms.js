@@ -1,10 +1,14 @@
-function normalizeDriverId(driverId) {
-  if (driverId === undefined || driverId === null) return '';
-  return String(driverId).trim();
-}
+/**
+ * Generates a consistent Socket.io room name for a driver based on their ID.
+ * @param {string|Object} driverId - Mongoose ObjectId or string representation of driver ID.
+ * @returns {string} Formatted room name string.
+ */
+const getDriverRoomName = (driverId) => {
+  if (!driverId) return 'driver_unknown';
+  const cleanId = typeof driverId === 'object' ? driverId.toString() : String(driverId);
+  return `driver_${cleanId.trim()}`;
+};
 
-function getDriverRoomName(driverId) {
-  return `driver_${normalizeDriverId(driverId)}`;
-}
-
-module.exports = { normalizeDriverId, getDriverRoomName };
+module.exports = {
+  getDriverRoomName
+};

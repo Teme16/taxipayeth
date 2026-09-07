@@ -1,110 +1,185 @@
+'use strict';
+
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+
+const {
+  normalizePhone,
+  normalizeWhitespace
+} = require('../utils/modelHelpers');
+
+const preferencesSchema = new mongoose.Schema(
+  {
+    language: {
+      type: String,
+      trim: true,
+      maxlength: 10,
+      default: 'en'
+    },
+    notificationsEnabled: {
+      type: Boolean,
+      default: true
+    }
+  },
+  {
+    _id: false,
+    strict: true
+  }
+);
 
 const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
       required: [true, 'Name is required'],
-      trim: true
-    },
-    email: {
-      type: String,
       trim: true,
-      lowercase: true,
-      unique: true,
-      sparse: true,      // Allows multiple documents to omit email
-      default: undefined // Ensures empty fields default to undefined
+      minlength: [2, 'Name must contain at least 2 characters'],
+      maxlength: [100, 'Name cannot exceed 100 characters'],
+      set: normalizeWhitespace
     },
+
     phone: {
       type: String,
       required: [true, 'Phone number is required'],
       unique: true,
-      trim: true,
-      index: true
+      immutable: false,
+      index: true,
+      set: normalizePhone,
+      validate: {
+        validator(value) {
+          return /^\+2519\d{8}$/.test(value);
+        },
+        message: 'Phone number must be a valid Ethiopian mobile number.'
+      }
     },
+
+    email: {
+      type: String,
+      unique: true,
+      sparse: true,
+      lowercase: true,
+      trim: true,
+      maxlength: [254, 'Email cannot exceed 254 characters'],
+      match: [
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+        'Please provide a valid email address.'
+      ]
+    },
+
     password: {
       type: String,
-      required: [true, 'Password is required']
+      required: [true, 'Password is required'],
+      minlength: [8, 'Password must contain at least 8 characters'],
+      maxlength: [128, 'Password cannot exceed 128 characters'],
+      select: false
     },
+
     role: {
       type: String,
-      enum: ['passenger', 'driver', 'admin'],
-      default: 'passenger'
+      enum: {
+        values: ['passenger', 'driver', 'admin'],
+        message: 'Invalid user role.'
+      },
+      default: 'passenger',
+      index: true
     },
-    targaNo: {
+
+    avatar: {
       type: String,
       trim: true,
       default: ''
     },
-    avatar: {
-      type: String,
-      default: ''
-    },
-    preferences: {
-      type: mongoose.Schema.Types.Mixed,
-      default: {}
-    },
-    isVerified: {
-      type: Boolean,
-      default: false
-    },
+
     telegramChatId: {
       type: String,
+      trim: true,
+      maxlength: [100, 'Telegram chat ID cannot exceed 100 characters'],
       default: ''
     },
-    verificationCode: {
-      type: String,
-      default: ''
+
+    balance: {
+      type: Number,
+      default: 0,
+      min: [0, 'Wallet balance cannot be negative']
     },
-    verificationExpires: {
-      type: Date
+
+    isVerified: {
+      type: Boolean,
+      default: false,
+      index: true
     },
+
+    isBlocked: {
+      type: Boolean,
+      default: false,
+      index: true
+    },
+
     approvalStatus: {
       type: String,
       enum: ['pending', 'approved', 'rejected'],
-      default: 'approved'
+      default: 'approved',
+      index: true
     },
-    isAdmin: {
-      type: Boolean,
-      default: false
-    },
-    isBlocked: {
-      type: Boolean,
-      default: false
+
+    preferences: {
+      type: preferencesSchema,
+      default: () => ({})
     }
   },
-  { 
-    timestamps: true 
+  {
+    timestamps: true,
+    versionKey: '__v',
+    optimisticConcurrency: true,
+    strict: 'throw',
+    toJSON: {
+      virtuals: true,
+      transform(doc, ret) {
+        delete ret.password;
+        delete ret.__v;
+        return ret;
+      }
+    },
+    toObject: {
+      virtuals: true,
+      transform(doc, ret) {
+        delete ret.password;
+        delete ret.__v;
+        return ret;
+      }
+    }
   }
 );
 
-/**
- * Ensure empty/null emails convert to undefined for sparse index safety
- */
-userSchema.pre('validate', function () {
-  if (this.email !== undefined && (this.email === null || String(this.email).trim() === '')) {
-    this.email = undefined;
+userSchema.index({ role: 1, isBlocked: 1 });
+userSchema.index({ approvalStatus: 1, createdAt: -1 });
+userSchema.index(
+  { telegramChatId: 1 },
+  {
+    sparse: true,
+    partialFilterExpression: {
+      telegramChatId: { $type: 'string', $ne: '' }
+    }
   }
-});
+);
 
-/**
- * Password Hashing Hook before saving document
- */
-userSchema.pre('save', async function () {
+userSchema.pre('save', async function hashPassword() {
   if (!this.isModified('password')) {
     return;
   }
 
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
+  const saltRounds = 12;
+  this.password = await bcrypt.hash(this.password, saltRounds);
 });
 
-/**
- * Compare entered password with hashed password stored in DB
- */
-userSchema.methods.matchPassword = async function (enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
+userSchema.methods.matchPassword = async function matchPassword(
+  enteredPassword
+) {
+  if (!this.password) {
+    return false;
+  }
+
+  return bcrypt.compare(enteredPassword, this.password);
 };
 
 module.exports = mongoose.model('User', userSchema);

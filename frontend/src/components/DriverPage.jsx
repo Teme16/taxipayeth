@@ -1,37 +1,48 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  QrCode, Armchair, X, Radio, RefreshCw, 
-  Bell, Wallet, Receipt, User, Phone, Calendar, ShieldCheck, 
+import {
+  QrCode, Armchair, X, Radio, RefreshCw,
+  Bell, Wallet, Receipt, User, Phone, Calendar, ShieldCheck,
   FileText, Edit3, Camera, Upload, CheckCircle, ShieldAlert, MapPin
 } from 'lucide-react';
 import { io } from 'socket.io-client';
 import DriverQRModal from './DriverQRModal';
 import DriverReceiptModal from './DriverReceiptModal';
 
-const socket = io('http://localhost:5001');
+// Dynamic API & Socket URL setup
+const API_BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL) || 'http://localhost:5001';
+const SOCKET_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SOCKET_URL) || API_BASE_URL;
+
+const socket = io(SOCKET_URL, {
+  withCredentials: true,
+  autoConnect: false,
+  transports: ['polling', 'websocket']
+});
 
 const normalizeDriverId = (value) => {
   if (value === undefined || value === null) return '';
   return String(value).trim();
 };
 
-export default function DriverPage({ 
+export default function DriverPage({
   driver: initialDriver,
-  driverId: propDriverId, 
-  targaNo = 'AA-3-A12345', 
-  driverName = 'Abebe Kebede' 
+  driverId: propDriverId,
+  targaNo = 'AA-3-A12345',
+  driverName = 'Abebe Kebede'
 }) {
   const [driver, setDriver] = useState(initialDriver || null);
 
-  const activeDriverId = normalizeDriverId(driver?.id || driver?._id || driver?.driverId || propDriverId || 'DRV-98231');
+  // Prioritize the User ObjectId for socket room matching (this is what the payment route emits to)
+  const activeUserObjectId = normalizeDriverId(driver?.user?._id || driver?.user || driver?.userId || driver?._id || propDriverId);
+  // Display-friendly driverId (string like 'DRV-98231') for UI only
+  const activeDriverId = normalizeDriverId(driver?.driverId || driver?.driverData?.driverId || propDriverId || driver?.id || driver?._id || '');
   const activeDriverName = driver?.fullName || driver?.name || driverName;
   const activeTargaNo = driver?.targaNo || targaNo;
 
   const formatPicUrl = (picPath) => {
     if (!picPath) return null;
-    if (picPath.startsWith('http')) return picPath;
+    if (picPath.startsWith('http') || picPath.startsWith('data:')) return picPath;
     const cleanPath = picPath.replace(/\\/g, '/').replace(/^uploads\//, '');
-    return `http://localhost:5001/uploads/${cleanPath}`;
+    return `${API_BASE_URL}/uploads/${cleanPath}`;
   };
 
   const [profilePicUrl, setProfilePicUrl] = useState(formatPicUrl(driver?.profilePic || driver?.driverData?.profileImage));
@@ -63,7 +74,7 @@ export default function DriverPage({
   const [notification, setNotification] = useState(null);
 
   // Earnings & Seats
-  const [totalEarnings, setTotalEarnings] = useState(0);
+  const [totalEarnings, setTotalEarnings] = useState(initialDriver?.totalEarnings || 0);
   const [transactions, setTransactions] = useState([]);
   const [seatStates, setSeatStates] = useState({
     1: 'unpaid', 2: 'unpaid', 3: 'unpaid', 4: 'unpaid', 5: 'unpaid',
@@ -75,6 +86,9 @@ export default function DriverPage({
   useEffect(() => {
     if (initialDriver) {
       setDriver(initialDriver);
+      if (initialDriver.totalEarnings !== undefined) {
+        setTotalEarnings(initialDriver.totalEarnings);
+      }
       setProfilePicUrl(formatPicUrl(initialDriver.profilePic || initialDriver.driverData?.profileImage));
       setEditFormData({
         fullName: initialDriver.fullName || initialDriver.name || driverName,
@@ -88,20 +102,27 @@ export default function DriverPage({
     }
   }, [initialDriver, driverName, targaNo]);
 
-  // Fetch driver data & listen for socket updates
+  // ═══════════════════════════════════════════════════════════════
+  // SINGLE consolidated socket + driver-data effect
+  // ═══════════════════════════════════════════════════════════════
   useEffect(() => {
-    if (!activeDriverId) return;
+    const token = localStorage.getItem('taxipay_token');
 
+    // ── 1. Fetch the Driver profile from API ──────────────────
     const fetchDriverProfile = async () => {
       try {
-        const token = localStorage.getItem('taxi_pay_token');
-        const res = await fetch(`http://localhost:5001/api/drivers/${activeDriverId}`, {
+        const lookupId = activeUserObjectId || activeDriverId;
+        if (!lookupId) return;
+        const res = await fetch(`${API_BASE_URL}/api/drivers/${lookupId}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
         if (!res.ok) return;
         const data = await res.json();
         if (data.success && data.driver) {
           setDriver(data.driver);
+          if (data.driver.totalEarnings !== undefined) {
+            setTotalEarnings(data.driver.totalEarnings);
+          }
           setProfilePicUrl(formatPicUrl(data.driver.profilePic || data.driver.driverData?.profileImage));
           setEditFormData({
             fullName: data.driver.fullName || data.driver.name || activeDriverName,
@@ -118,14 +139,112 @@ export default function DriverPage({
       }
     };
 
-    fetchDriverProfile();
-    socket.emit('join_driver_room', activeDriverId);
+    if (activeUserObjectId || activeDriverId) {
+      fetchDriverProfile();
+    }
 
+    // ── 1b. Fetch Transaction History ─────────────────────────────
+    const fetchDriver = async () => {
+      if (initialDriver) return;
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/drivers/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.success && data.driver) {
+          setDriver(data.driver);
+        }
+      } catch (err) {
+        console.error('Driver fetch error:', err);
+      }
+    };
+
+    const fetchHistory = async () => {
+      if (!token) return;
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/payments/history`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.success && data.transactions) {
+          const formattedTransactions = data.transactions.map(t => ({
+            transactionId: t.transactionId || t._id,
+            passengerName: t.passengerSnapshot?.name || 'Passenger',
+            passengerPhone: t.passengerSnapshot?.phone || '',
+            seats: t.seats || [],
+            amount: t.amount,
+            createdAt: t.createdAt,
+            paymentStatus: t.status || 'SUCCESS'
+          }));
+          setTransactions(formattedTransactions);
+
+          // Restore seat states from today's successful transactions after lastTripResetAt
+          setSeatStates(prev => {
+            const newStates = { ...prev };
+            
+            // Only consider transactions after lastTripResetAt (if provided)
+            let resetTime = 0;
+            if (data.lastTripResetAt) {
+              resetTime = new Date(data.lastTripResetAt).getTime();
+            }
+
+            data.transactions.forEach(t => {
+              const txTime = new Date(t.createdAt).getTime();
+              if (txTime > resetTime && t.status !== 'failed' && t.type !== 'withdraw' && Array.isArray(t.seats)) {
+                t.seats.forEach(s => {
+                  newStates[s] = 'paid';
+                });
+              }
+            });
+            return newStates;
+          });
+        }
+      } catch (err) {
+        console.error('History fetch error:', err);
+      }
+    };
+
+    fetchDriver();
+    fetchHistory();
+
+    // ── 2. Socket setup ───────────────────────────────────────
+    // Helper: join all relevant rooms once the socket is connected
+    const joinRooms = () => {
+      // Join with User ObjectId (primary — matches what the payment route emits to)
+      if (activeUserObjectId) {
+        socket.emit('join_driver_room', activeUserObjectId);
+      }
+      // Join with display driverId as fallback
+      if (activeDriverId && activeDriverId !== activeUserObjectId) {
+        socket.emit('join_driver_room', activeDriverId);
+      }
+      // If we have the fetched driver object, also join with its document IDs
+      if (driver) {
+        if (driver._id) socket.emit('join_driver_room', String(driver._id));
+        if (driver.user) {
+          const userIdStr = typeof driver.user === 'object'
+            ? String(driver.user._id || driver.user)
+            : String(driver.user);
+          socket.emit('join_driver_room', userIdStr);
+        }
+      }
+      console.log('[DriverPage] Socket rooms joined. activeUserObjectId:', activeUserObjectId, 'activeDriverId:', activeDriverId);
+    };
+
+    // Handler for seat status changes from the server
     const handleSeatStatusChange = (data) => {
+      console.log('🔥 [DriverPage] RECEIVED SOCKET EVENT:', data);
+      
       const { seatNumbers, status, passengerName, amount, transactionId, timestamp } = data;
-      if (!seatNumbers) return;
+      if (!seatNumbers) {
+        console.warn('⚠️ [DriverPage] Received event without seatNumbers!');
+        return;
+      }
 
       const seatsToUpdate = Array.isArray(seatNumbers) ? seatNumbers.map(Number) : [Number(seatNumbers)];
+      console.log(`[DriverPage] Updating seats ${seatsToUpdate.join(', ')} to status: ${status}`);
 
       setSeatStates((prev) => {
         const updated = { ...prev };
@@ -139,11 +258,13 @@ export default function DriverPage({
 
         setTransactions((prev) => [
           {
-            id: transactionId || Date.now(),
+            transactionId: transactionId || `TXN-${Date.now()}`,
             passengerName: passengerName || 'Passenger',
+            passengerPhone: '',
             seats: seatsToUpdate,
             amount: numericAmount,
-            date: timestamp || new Date().toISOString()
+            createdAt: timestamp || new Date().toISOString(),
+            paymentStatus: 'SUCCESS'
           },
           ...prev
         ]);
@@ -156,9 +277,27 @@ export default function DriverPage({
       }
     };
 
+    // Register the listener BEFORE connecting so buffered events aren't lost
     socket.on('seat_status_changed', handleSeatStatusChange);
-    return () => socket.off('seat_status_changed', handleSeatStatusChange);
-  }, [activeDriverId, activeDriverName, activeTargaNo]);
+
+    // When the socket connects (or is already connected), join rooms
+    if (socket.connected) {
+      joinRooms();
+    }
+    socket.on('connect', joinRooms);
+
+    // Connect the socket if not already connected
+    if (!socket.connected && token) {
+      socket.auth = { token };
+      socket.connect();
+    }
+
+    return () => {
+      socket.off('seat_status_changed', handleSeatStatusChange);
+      socket.off('connect', joinRooms);
+      socket.disconnect();
+    };
+  }, [activeUserObjectId, activeDriverId, activeDriverName, activeTargaNo, driver?._id]);
 
   const toggleSeatStatus = (seatNum) => {
     setSeatStates((prev) => {
@@ -168,21 +307,34 @@ export default function DriverPage({
       else if (current === 'pending') nextStatus = 'paid';
 
       const newState = { ...prev, [seatNum]: nextStatus };
-      socket.emit('update_seat_status', { driverId: activeDriverId, seatNumbers: [seatNum], status: nextStatus });
+      socket.emit('update_seat_status', { driverId: activeUserObjectId || activeDriverId, seatNumbers: [seatNum], status: nextStatus });
       return newState;
     });
   };
 
-  const resetAllSeats = () => {
-    const resetState = {};
-    for (let i = 1; i <= 15; i++) resetState[i] = 'unpaid';
-    setSeatStates(resetState);
+  const resetAllSeats = async () => {
+    const token = localStorage.getItem('taxipay_token');
+    if (!token) return;
 
-    socket.emit('update_seat_status', {
-      driverId: activeDriverId,
-      seatNumbers: Array.from({ length: 15 }, (_, i) => i + 1),
-      status: 'unpaid'
-    });
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/drivers/reset-trip`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          const resetState = {};
+          for (let i = 1; i <= 15; i++) resetState[i] = 'unpaid';
+          setSeatStates(resetState);
+        }
+      }
+    } catch (err) {
+      console.error('Reset trip error:', err);
+    }
   };
 
   const handleFileChange = (e, setFile, setPreview, currentPreview) => {
@@ -213,9 +365,9 @@ export default function DriverPage({
       if (newProfilePic) data.append('profilePic', newProfilePic);
       if (newDigitalId) data.append('digitalId', newDigitalId);
 
-      const token = localStorage.getItem('taxi_pay_token');
+      const token = localStorage.getItem('taxipay_token');
 
-      const response = await fetch('http://localhost:5001/api/drivers/complete-profile', {
+      const response = await fetch(`${API_BASE_URL}/api/drivers/complete-profile`, {
         method: 'POST',
         headers: {
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
@@ -228,8 +380,7 @@ export default function DriverPage({
       if (response.ok && result.success) {
         setDriver(result.driver);
         setProfilePicUrl(formatPicUrl(result.driver.profilePic || result.driver.driverData?.profileImage));
-        
-        // Sync editFormData with the newly saved backend data
+
         setEditFormData({
           fullName: result.driver.fullName || result.driver.name || activeDriverName,
           mobileNumber: result.driver.mobileNumber || result.driver.phone || '',
@@ -268,7 +419,7 @@ export default function DriverPage({
     <div className="max-w-md mx-auto w-full text-white space-y-4 p-2 relative">
       {/* Toast Notification */}
       {notification && (
-        <div className="fixed top-4 right-4 left-4 max-w-md mx-auto bg-emerald-600 text-white p-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-emerald-400 z-50 animate-bounce">
+        <div className="fixed top-4 right-4 left-4 max-w-md mx-auto glass-button text-white p-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-emerald-400 z-50 animate-bounce">
           <Bell size={22} className="text-emerald-200 shrink-0" />
           <div className="flex-1">
             <h4 className="font-bold text-xs">{notification.title}</h4>
@@ -279,7 +430,7 @@ export default function DriverPage({
       )}
 
       {/* Driver Header */}
-      <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 shadow-2xl space-y-4">
+      <div className="glass-card border border-white/10 rounded-3xl p-6 shadow-2xl space-y-4">
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-3">
             <button
@@ -288,7 +439,7 @@ export default function DriverPage({
                 setIsEditingProfile(false);
                 setShowProfileModal(true);
               }}
-              className="relative w-14 h-14 rounded-2xl overflow-hidden border-2 border-emerald-500 hover:border-emerald-400 transition cursor-pointer shadow-lg bg-neutral-950 flex items-center justify-center shrink-0 group"
+              className="relative w-14 h-14 rounded-2xl overflow-hidden border-2 border-emerald-500 hover:border-emerald-400 transition cursor-pointer shadow-lg glass-panel flex items-center justify-center shrink-0 group"
               title="Click to view/edit profile"
             >
               {profilePicUrl ? (
@@ -313,7 +464,7 @@ export default function DriverPage({
           <button
             onClick={() => setShowQRModal(true)}
             type="button"
-            className="bg-blue-600 hover:bg-blue-500 text-white p-2.5 rounded-2xl shadow-lg transition flex flex-col items-center gap-1 cursor-pointer border border-blue-400/30"
+            className="glass-button-primary hover:bg-blue-500 text-white p-2.5 rounded-2xl shadow-lg transition flex flex-col items-center gap-1 cursor-pointer border border-blue-400/30"
           >
             <QrCode size={20} />
             <span className="text-[9px] font-bold">Show QR</span>
@@ -321,21 +472,21 @@ export default function DriverPage({
         </div>
 
         {/* Earnings Card */}
-        <div className="bg-neutral-950 border border-neutral-800 p-4 rounded-2xl flex items-center justify-between">
+        <div className="glass-panel border border-white/10 p-4 rounded-2xl flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl">
               <Wallet size={20} />
             </div>
             <div>
               <span className="text-[10px] text-gray-400 font-bold uppercase block">Total Trip Earnings</span>
-              <span className="text-2xl font-black text-emerald-400 font-mono">{totalEarnings} ETB</span>
+              <span className="text-2xl font-black text-emerald-400 font-mono">{totalEarnings.toFixed(2)} ETB</span>
             </div>
           </div>
 
           <button
             onClick={() => setShowHistoryModal(true)}
             type="button"
-            className="bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-emerald-400 px-3.5 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition cursor-pointer"
+            className="glass-panel hover:bg-neutral-700 border border-white/20 text-emerald-400 px-3.5 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition cursor-pointer"
           >
             <Receipt size={16} /> History ({transactions.length})
           </button>
@@ -343,27 +494,27 @@ export default function DriverPage({
       </div>
 
       {/* Minibus Seat Occupancy Grid */}
-      <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-5 space-y-4 shadow-2xl">
-        <div className="flex justify-between items-center border-b border-neutral-800 pb-3">
+      <div className="glass-card border border-white/10 rounded-3xl p-5 space-y-4 shadow-2xl">
+        <div className="flex justify-between items-center border-b border-white/10 pb-3">
           <div>
             <h3 className="text-base font-black text-white">Minibus Occupancy</h3>
             <p className="text-[11px] text-gray-400">Tap seat to toggle state manually</p>
           </div>
-          <button onClick={resetAllSeats} className="text-[11px] text-gray-400 hover:text-white flex items-center gap-1 bg-neutral-800 p-2 rounded-xl transition border border-neutral-700 cursor-pointer">
+          <button onClick={resetAllSeats} className="text-[11px] text-gray-400 hover:text-white flex items-center gap-1 glass-panel p-2 rounded-xl transition border border-white/20 cursor-pointer">
             <RefreshCw size={12} /> Reset Trip
           </button>
         </div>
 
         <div className="grid grid-cols-3 gap-2 text-[10px] font-bold text-center">
-          <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-1.5 rounded-lg">Unpaid ({15 - paidCount - pendingCount})</div>
+          <div className="glass-button-danger border border-red-500/30 text-red-400 p-1.5 rounded-lg">Unpaid ({15 - paidCount - pendingCount})</div>
           <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 p-1.5 rounded-lg">Pending ({pendingCount})</div>
           <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-1.5 rounded-lg">Paid ({paidCount})</div>
         </div>
 
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2.5 bg-neutral-950 p-4 rounded-2xl border border-neutral-800">
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2.5 glass-panel p-4 rounded-2xl border border-white/10">
           {Array.from({ length: 15 }, (_, i) => i + 1).map((seatNum) => {
             const status = seatStates[seatNum] || 'unpaid';
-            const statusBg = status === 'paid' ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' : status === 'pending' ? 'bg-amber-500/20 border-amber-500 text-amber-400' : 'bg-red-500/10 border-red-500/40 text-red-400/80';
+            const statusBg = status === 'paid' ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' : status === 'pending' ? 'bg-amber-500/20 border-amber-500 text-amber-400' : 'glass-button-danger border-red-500/40 text-red-400/80';
             return (
               <button key={seatNum} type="button" onClick={() => toggleSeatStatus(seatNum)} className={`h-14 rounded-2xl border flex flex-col items-center justify-center font-mono font-black text-xs transition-all cursor-pointer ${statusBg}`}>
                 <div className="flex items-center gap-1 mb-0.5">
@@ -377,15 +528,14 @@ export default function DriverPage({
         </div>
       </div>
 
-      {/* DRIVER PROFILE MODAL - PREMIUM REDESIGN */}
+      {/* DRIVER PROFILE MODAL */}
       {showProfileModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-xl transition-opacity duration-300"></div>
-          <div className="relative w-full max-w-md bg-neutral-900/90 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 shadow-[0_0_50px_-12px_rgba(16,185,129,0.3)] text-white max-h-[90vh] overflow-y-auto overflow-x-hidden transform transition-all duration-300 scale-100">
-            
-            {/* Header */}
+          <div className="relative w-full max-w-md glass-card/90 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 shadow-[0_0_50px_-12px_rgba(16,185,129,0.3)] text-white max-h-[90vh] overflow-y-auto overflow-x-hidden transform transition-all duration-300 scale-100">
+
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-black bg-linear-to-r from-emerald-400 to-teal-200 bg-clip-text text-transparent">
+              <h3 className="text-xl font-black bg-gradient-to-r from-emerald-400 to-teal-200 bg-clip-text text-transparent">
                 {isEditingProfile ? 'Update Profile' : 'Driver Identity'}
               </h3>
               <div className="flex items-center gap-2">
@@ -399,7 +549,7 @@ export default function DriverPage({
                 )}
                 <button
                   onClick={() => setShowProfileModal(false)}
-                  className="text-gray-400 hover:text-white p-2 rounded-2xl bg-neutral-800/50 hover:bg-neutral-700/50 transition cursor-pointer"
+                  className="text-gray-400 hover:text-white p-2 rounded-2xl glass-panel/50 hover:bg-neutral-700/50 transition cursor-pointer"
                 >
                   <X size={20} />
                 </button>
@@ -407,7 +557,7 @@ export default function DriverPage({
             </div>
 
             {profileError && (
-              <div className="mb-4 bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-2xl text-xs flex items-center gap-2 shadow-inner">
+              <div className="mb-4 glass-button-danger border border-red-500/30 text-red-400 p-3 rounded-2xl text-xs flex items-center gap-2 shadow-inner">
                 <ShieldAlert size={16} className="shrink-0" />
                 <span>{profileError}</span>
               </div>
@@ -415,12 +565,11 @@ export default function DriverPage({
 
             {!isEditingProfile ? (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                {/* ID Card Top */}
-                <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-neutral-800/80 to-neutral-900/80 border border-white/5 p-6 shadow-2xl flex flex-col items-center text-center space-y-4">
-                  <div className="absolute top-0 inset-x-0 h-1/2 bg-linear-to-b from-emerald-500/10 to-transparent"></div>
-                  
-                  <div className="relative w-28 h-28 rounded-full p-1 bg-linear-to-tr from-emerald-500 to-teal-300 shadow-[0_0_30px_-5px_rgba(16,185,129,0.5)]">
-                    <div className="w-full h-full rounded-full overflow-hidden bg-neutral-950 flex items-center justify-center">
+                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-neutral-800/80 to-neutral-900/80 border border-white/5 p-6 shadow-2xl flex flex-col items-center text-center space-y-4">
+                  <div className="absolute top-0 inset-x-0 h-1/2 bg-gradient-to-b from-emerald-500/10 to-transparent"></div>
+
+                  <div className="relative w-28 h-28 rounded-full p-1 bg-gradient-to-tr from-emerald-500 to-teal-300 shadow-[0_0_30px_-5px_rgba(16,185,129,0.5)]">
+                    <div className="w-full h-full rounded-full overflow-hidden glass-panel flex items-center justify-center">
                       {profilePicUrl ? (
                         <img src={profilePicUrl} alt={activeDriverName} className="w-full h-full object-cover transition-transform duration-500 hover:scale-110" />
                       ) : (
@@ -428,7 +577,7 @@ export default function DriverPage({
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="relative z-10">
                     <h3 className="text-2xl font-black tracking-tight">{activeDriverName}</h3>
                     <div className="flex items-center justify-center gap-2 mt-2">
@@ -439,25 +588,24 @@ export default function DriverPage({
                   </div>
                 </div>
 
-                {/* Details Grid */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-neutral-800/40 backdrop-blur-md border border-white/5 rounded-2xl p-4 flex flex-col justify-center transition-all hover:bg-neutral-800/60">
+                  <div className="glass-panel/40 backdrop-blur-md border border-white/5 rounded-2xl p-4 flex flex-col justify-center transition-all hover:glass-panel/60">
                     <span className="text-[10px] text-gray-400 uppercase font-bold flex items-center gap-1.5 mb-1"><ShieldCheck size={12} className="text-emerald-400" /> Targa (Plate)</span>
                     <span className="font-mono font-bold text-sm text-white">{activeTargaNo}</span>
                   </div>
-                  <div className="bg-neutral-800/40 backdrop-blur-md border border-white/5 rounded-2xl p-4 flex flex-col justify-center transition-all hover:bg-neutral-800/60">
+                  <div className="glass-panel/40 backdrop-blur-md border border-white/5 rounded-2xl p-4 flex flex-col justify-center transition-all hover:glass-panel/60">
                     <span className="text-[10px] text-gray-400 uppercase font-bold flex items-center gap-1.5 mb-1"><Phone size={12} className="text-blue-400" /> Phone</span>
                     <span className="font-mono font-bold text-sm text-white">{driver?.mobileNumber || driver?.phone || editFormData.mobileNumber || 'N/A'}</span>
                   </div>
-                  <div className="bg-neutral-800/40 backdrop-blur-md border border-white/5 rounded-2xl p-4 flex flex-col justify-center transition-all hover:bg-neutral-800/60">
+                  <div className="glass-panel/40 backdrop-blur-md border border-white/5 rounded-2xl p-4 flex flex-col justify-center transition-all hover:glass-panel/60">
                     <span className="text-[10px] text-gray-400 uppercase font-bold flex items-center gap-1.5 mb-1"><MapPin size={12} className="text-pink-400" /> Address</span>
                     <span className="font-medium text-sm text-white">{driver?.address || editFormData.address || 'N/A'}</span>
                   </div>
-                  <div className="bg-neutral-800/40 backdrop-blur-md border border-white/5 rounded-2xl p-4 flex flex-col justify-center transition-all hover:bg-neutral-800/60">
+                  <div className="glass-panel/40 backdrop-blur-md border border-white/5 rounded-2xl p-4 flex flex-col justify-center transition-all hover:glass-panel/60">
                     <span className="text-[10px] text-gray-400 uppercase font-bold flex items-center gap-1.5 mb-1"><Calendar size={12} className="text-amber-400" /> Birth Date</span>
                     <span className="font-medium text-sm text-white">{driver?.birthDate || 'N/A'}</span>
                   </div>
-                  <div className="col-span-2 bg-neutral-800/40 backdrop-blur-md border border-white/5 rounded-2xl p-4 flex items-center justify-between transition-all hover:bg-neutral-800/60">
+                  <div className="col-span-2 glass-panel/40 backdrop-blur-md border border-white/5 rounded-2xl p-4 flex items-center justify-between transition-all hover:glass-panel/60">
                     <div>
                       <span className="text-[10px] text-gray-400 uppercase font-bold flex items-center gap-1.5 mb-1"><FileText size={12} className="text-purple-400" /> Verification Docs</span>
                       <span className="text-xs font-medium text-gray-300">Digital ID / Fayda</span>
@@ -470,7 +618,7 @@ export default function DriverPage({
 
                 <button
                   onClick={() => setIsEditingProfile(true)}
-                  className="w-full bg-linear-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-neutral-950 font-black py-4 rounded-2xl text-sm transition-all transform hover:scale-[1.02] shadow-[0_10px_20px_-10px_rgba(16,185,129,0.5)] cursor-pointer flex items-center justify-center gap-2"
+                  className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-neutral-950 font-black py-4 rounded-2xl text-sm transition-all transform hover:scale-[1.02] shadow-[0_10px_20px_-10px_rgba(16,185,129,0.5)] cursor-pointer flex items-center justify-center gap-2"
                 >
                   <Edit3 size={18} /> Update Information
                 </button>
@@ -478,8 +626,8 @@ export default function DriverPage({
             ) : (
               <form onSubmit={handleSaveProfile} className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
                 <div className="flex flex-col items-center gap-3">
-                  <div className="relative w-24 h-24 rounded-full p-1 bg-linear-to-tr from-emerald-500/50 to-transparent flex items-center justify-center overflow-hidden cursor-pointer group hover:from-emerald-400 transition-all shadow-lg">
-                    <div className="w-full h-full bg-neutral-950 rounded-full flex flex-col items-center justify-center relative overflow-hidden border border-white/10">
+                  <div className="relative w-24 h-24 rounded-full p-1 bg-gradient-to-tr from-emerald-500/50 to-transparent flex items-center justify-center overflow-hidden cursor-pointer group hover:from-emerald-400 transition-all shadow-lg">
+                    <div className="w-full h-full glass-panel rounded-full flex flex-col items-center justify-center relative overflow-hidden border border-white/10">
                       {profilePicPreview ? (
                         <img src={profilePicPreview} alt="Preview" className="w-full h-full object-cover group-hover:opacity-50 transition" />
                       ) : profilePicUrl ? (
@@ -508,7 +656,7 @@ export default function DriverPage({
                       type="text"
                       value={editFormData.fullName}
                       onChange={(e) => setEditFormData({ ...editFormData, fullName: e.target.value })}
-                      className="w-full bg-neutral-950/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 focus:bg-neutral-900/80 transition-all shadow-inner"
+                      className="w-full glass-panel/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 focus:glass-card transition-all shadow-inner"
                       required
                     />
                   </div>
@@ -520,7 +668,7 @@ export default function DriverPage({
                         type="tel"
                         value={editFormData.mobileNumber}
                         onChange={(e) => setEditFormData({ ...editFormData, mobileNumber: e.target.value })}
-                        className="w-full bg-neutral-950/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono focus:bg-neutral-900/80 transition-all shadow-inner"
+                        className="w-full glass-panel/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono focus:glass-card transition-all shadow-inner"
                         required
                       />
                     </div>
@@ -530,7 +678,7 @@ export default function DriverPage({
                         type="text"
                         value={editFormData.targaNo}
                         onChange={(e) => setEditFormData({ ...editFormData, targaNo: e.target.value })}
-                        className="w-full bg-neutral-950/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono focus:bg-neutral-900/80 transition-all shadow-inner"
+                        className="w-full glass-panel/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono focus:glass-card transition-all shadow-inner"
                         required
                       />
                     </div>
@@ -543,7 +691,7 @@ export default function DriverPage({
                         type="date"
                         value={editFormData.birthDate}
                         onChange={(e) => setEditFormData({ ...editFormData, birthDate: e.target.value })}
-                        className="w-full bg-neutral-950/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 focus:bg-neutral-900/80 transition-all shadow-inner"
+                        className="w-full glass-panel/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 focus:glass-card transition-all shadow-inner"
                       />
                     </div>
                     <div className="group">
@@ -552,7 +700,7 @@ export default function DriverPage({
                         type="text"
                         value={editFormData.licenseNumber}
                         onChange={(e) => setEditFormData({ ...editFormData, licenseNumber: e.target.value })}
-                        className="w-full bg-neutral-950/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono focus:bg-neutral-900/80 transition-all shadow-inner"
+                        className="w-full glass-panel/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono focus:glass-card transition-all shadow-inner"
                       />
                     </div>
                   </div>
@@ -563,7 +711,7 @@ export default function DriverPage({
                       type="tel"
                       value={editFormData.emergencyContact}
                       onChange={(e) => setEditFormData({ ...editFormData, emergencyContact: e.target.value })}
-                      className="w-full bg-neutral-950/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono focus:bg-neutral-900/80 transition-all shadow-inner"
+                      className="w-full glass-panel/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono focus:glass-card transition-all shadow-inner"
                     />
                   </div>
 
@@ -573,14 +721,14 @@ export default function DriverPage({
                       type="text"
                       value={editFormData.address}
                       onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })}
-                      className="w-full bg-neutral-950/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 focus:bg-neutral-900/80 transition-all shadow-inner"
+                      className="w-full glass-panel/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 focus:glass-card transition-all shadow-inner"
                     />
                   </div>
                 </div>
 
                 <div className="group">
                   <label className="text-[10px] font-bold text-gray-400 group-focus-within:text-emerald-400 uppercase tracking-wider mb-1 block transition-colors">Update Digital ID Document</label>
-                  <div className="relative w-full h-24 bg-neutral-950/50 border border-dashed border-white/20 rounded-2xl flex flex-col items-center justify-center p-2 cursor-pointer hover:border-emerald-500 hover:bg-emerald-500/5 transition-all">
+                  <div className="relative w-full h-24 glass-panel/50 border border-dashed border-white/20 rounded-2xl flex flex-col items-center justify-center p-2 cursor-pointer hover:border-emerald-500 hover:bg-emerald-500/5 transition-all">
                     {digitalIdPreview ? (
                       <img src={digitalIdPreview} alt="ID Preview" className="h-full object-contain rounded-lg" />
                     ) : (
@@ -602,14 +750,14 @@ export default function DriverPage({
                   <button
                     type="button"
                     onClick={() => setIsEditingProfile(false)}
-                    className="w-1/3 bg-neutral-800/80 hover:bg-neutral-700 text-white font-bold py-3.5 rounded-2xl text-xs transition cursor-pointer"
+                    className="w-1/3 glass-panel/80 hover:bg-neutral-700 text-white font-bold py-3.5 rounded-2xl text-xs transition cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={savingProfile}
-                    className="w-2/3 bg-linear-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-neutral-950 font-black py-3.5 rounded-2xl text-xs transition-all transform hover:scale-[1.02] shadow-[0_10px_20px_-10px_rgba(16,185,129,0.4)] cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 disabled:transform-none"
+                    className="w-2/3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-neutral-950 font-black py-3.5 rounded-2xl text-xs transition-all transform hover:scale-[1.02] shadow-[0_10px_20px_-10px_rgba(16,185,129,0.4)] cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 disabled:transform-none"
                   >
                     {savingProfile ? (
                       <span className="flex items-center gap-2"><RefreshCw size={14} className="animate-spin" /> Saving...</span>
@@ -628,6 +776,7 @@ export default function DriverPage({
         <DriverQRModal
           driverName={activeDriverName}
           driverId={activeDriverId}
+          userId={driver?.user?._id || driver?.user || driver?._id || ''}
           targaNo={activeTargaNo}
           defaultTariff={15}
           onClose={() => setShowQRModal(false)}

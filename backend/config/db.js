@@ -1,15 +1,47 @@
+'use strict';
+
 const mongoose = require('mongoose');
+const config = require('./env');
+
+mongoose.set('strictQuery', true);
 
 const connectDB = async () => {
-  const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/taxipay';
+  mongoose.connection.on('connected', () => {
+    console.log('✅ MongoDB connected');
+  });
 
-  if (!MONGO_URI) {
-    throw new Error('MONGO_URI is not defined in environment variables');
-  }
+  mongoose.connection.on('error', (error) => {
+    console.error(
+      '❌ MongoDB connection error:',
+      error.message
+    );
+  });
 
-  await mongoose.connect(MONGO_URI);
+  mongoose.connection.on('disconnected', () => {
+    console.warn('⚠️ MongoDB disconnected');
+  });
 
-  console.log('✅ MongoDB connected');
+  await mongoose.connect(config.MONGO_URI, {
+    maxPoolSize: config.MONGO_MAX_POOL_SIZE,
+    minPoolSize: config.MONGO_MIN_POOL_SIZE,
+    serverSelectionTimeoutMS: 10000,
+    socketTimeoutMS: 45000,
+    connectTimeoutMS: 10000,
+    retryWrites: true
+  });
+
+  await mongoose.connection.db.admin().ping();
+
+  return mongoose.connection;
 };
 
-module.exports = connectDB;
+const disconnectDB = async () => {
+  if (mongoose.connection.readyState !== 0) {
+    await mongoose.connection.close();
+  }
+};
+
+module.exports = {
+  connectDB,
+  disconnectDB
+};

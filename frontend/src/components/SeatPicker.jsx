@@ -24,10 +24,10 @@ export default function SeatPicker({ selectedSeats, setSelectedSeats, seatStates
 
   const getSeatColor = (seatNum) => {
     const status = seatStates[seatNum];
-    if (status === 'paid') return 'bg-emerald-500/20 border-emerald-500 text-emerald-400 cursor-not-allowed'; // Green
+    if (status === 'paid') return 'bg-red-500/20 border-red-500 text-red-400 cursor-not-allowed'; // Red for taken/paid
     if (status === 'pending') return 'bg-amber-500/20 border-amber-500 text-amber-400'; // Yellow
     if (selectedSeats.includes(seatNum)) return 'bg-taxi-blue-primary text-white border-blue-400 scale-105'; // Selected
-    return 'bg-neutral-800 border-neutral-700 text-gray-400 hover:border-gray-500 hover:text-white cursor-pointer'; // Default Red/Unpaid state
+    return 'bg-neutral-800 border-neutral-700 text-gray-400 hover:border-gray-500 hover:text-white cursor-pointer'; // Default Unpaid state
   };
 
   return (
@@ -63,18 +63,6 @@ export default function SeatPicker({ selectedSeats, setSelectedSeats, seatStates
         ))}
       </div>
 
-      {/* Seat Legend */}
-      <div className="grid grid-cols-3 gap-2 pt-1 text-[10px] font-bold text-gray-400 text-center">
-        <div className="flex items-center justify-center gap-1">
-          <span className="w-2.5 h-2.5 rounded-full bg-neutral-700 border border-neutral-500" /> Unpaid
-        </div>
-        <div className="flex items-center justify-center gap-1">
-          <span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Pending
-        </div>
-        <div className="flex items-center justify-center gap-1">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Paid
-        </div>
-      </div>
     </div>
   );
 }

@@ -1,53 +1,76 @@
 // routes/userRoutes.js
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
 const { protect } = require('../middleware/auth');
+const {
+  getProfile,
+  updateProfile,
+  deposit,
+  withdraw,
+  profileValidators = []
+} = require('../controllers/userController');
 
-// GET Profile
-router.get('/profile', protect, async (req, res) => {
-  try {
-    // req.user is set by the protect middleware
-    const user = req.user;
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-    return res.json({ success: true, user });
-  } catch (err) {
-    return res.status(500).json({ success: false, message: err.message });
+// Multer Storage Configuration
+const storage = multer.memoryStorage();
+
+// File Filter Validation
+const fileFilter = (req, file, cb) => {
+  const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+  if (allowedMimeTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only JPEG, PNG, WebP, and GIF images are allowed.'), false);
   }
+};
+
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
 });
 
-// PUT Profile (Update)
-router.put('/profile', protect, async (req, res) => {
-  try {
-    const { name, phone, avatar, preferences } = req.body;
+// Middleware Wrapper to Handle Multer Errors (File size limit, format error)
+const handleAvatarUpload = (req, res, next) => {
+  const singleUpload = upload.single('avatarFile');
 
-    const user = req.user;
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+  singleUpload(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({
+          success: false,
+          message: 'File size exceeds the 5MB limit.'
+        });
+      }
+      return res.status(400).json({ success: false, message: err.message });
+    } else if (err) {
+      return res.status(400).json({ success: false, message: err.message });
     }
+    next();
+  });
+};
 
-    if (name) user.name = name;
-    if (phone) user.phone = phone;
-    if (avatar) user.avatar = avatar;
-    if (preferences) user.preferences = preferences;
+// ================= ROUTE DEFINITIONS ================= //
 
-    await user.save();
+// GET /api/users/profile — Fetch authenticated user's profile
+router.get('/profile', protect, getProfile);
 
-    // Re-touch session so TTL resets (if session exists)
-    if (req.session) {
-      req.session.touch();
-    }
+// PUT /api/users/profile — Update profile with optional avatar file upload
+router.put(
+  '/profile',
+  protect,
+  handleAvatarUpload,
+  ...profileValidators,
+  updateProfile
+);
 
-    return res.json({
-      success: true,
-      message: 'Profile updated successfully',
-      user
-    });
-  } catch (err) {
-    return res.status(500).json({ success: false, message: err.message });
-  }
-});
+// POST /api/users/deposit — Deposit funds
+router.post('/deposit', protect, deposit);
+
+// POST /api/users/withdraw — Withdraw funds
+router.post('/withdraw', protect, withdraw);
 
 module.exports = router;

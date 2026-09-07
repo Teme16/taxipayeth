@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { useAuth } from '../context/AuthContext.jsx';
+import * as authApi from '../api/auth.js';
+import { CheckCircle2, ShieldCheck, Loader2, MessageCircle, RefreshCw } from 'lucide-react';
 
-export default function AuthPage({ onLoginSuccess }) {
+export default function AuthPage() {
+  const { login, register, setUser } = useAuth();
+
   const [isLogin, setIsLogin] = useState(true);
   const [role, setRole] = useState('passenger');
   const [formData, setFormData] = useState({
@@ -21,13 +25,13 @@ export default function AuthPage({ onLoginSuccess }) {
   // Auto-poll verification status while user is in 'code_sent' state
   useEffect(() => {
     let intervalId;
-    if (!isLogin && otpStep === 'code_sent' && formData.phone && formData.code) {
+    if (!isLogin && otpStep === 'code_sent' && formData.phone) {
       intervalId = setInterval(() => {
         handleVerifyCode(true); // Silent background check
       }, 3000);
     }
     return () => clearInterval(intervalId);
-  }, [otpStep, isLogin, formData.phone, formData.code]);
+  }, [otpStep, isLogin, formData.phone]);
 
   const verificationStatusText = () => {
     if (otpStep === 'verified') return 'Telegram verification complete. You may finish registration.';
@@ -47,9 +51,7 @@ export default function AuthPage({ onLoginSuccess }) {
     setSuccessMsg('');
 
     try {
-      const res = await axios.post('http://localhost:5001/api/auth/request-telegram-verification', {
-        phone: formData.phone.trim()
-      });
+      const res = await authApi.requestVerification(formData.phone.trim());
 
       if (res.data.success) {
         setOtpStep('code_sent');
@@ -58,7 +60,7 @@ export default function AuthPage({ onLoginSuccess }) {
         setTelegramBotLink(res.data.telegramBotLink || '');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to request Telegram verification.');
+      setError(err.message || 'Failed to request Telegram verification.');
     } finally {
       setLoading(false);
     }
@@ -66,7 +68,7 @@ export default function AuthPage({ onLoginSuccess }) {
 
   // 2. Check if Telegram user verified contact
   const handleVerifyCode = async (isSilent = false) => {
-    if (!formData.phone || !formData.code) return;
+    if (!formData.phone) return;
 
     if (!isSilent) {
       setLoading(true);
@@ -75,10 +77,7 @@ export default function AuthPage({ onLoginSuccess }) {
     }
 
     try {
-      const res = await axios.post('http://localhost:5001/api/auth/check-telegram-verification', {
-        phone: formData.phone.trim(),
-        code: formData.code.trim()
-      });
+      const res = await authApi.checkVerification(formData.phone.trim(), formData.code.trim());
 
       if (res.data.success && res.data.verified) {
         setOtpStep('verified');
@@ -89,7 +88,7 @@ export default function AuthPage({ onLoginSuccess }) {
       }
     } catch (err) {
       if (!isSilent) {
-        setError(err.response?.data?.message || 'The phone number shared does not match TaxiPay registration.');
+        setError(err.message || 'The phone number shared does not match TaxiPay registration.');
       }
     } finally {
       if (!isSilent) setLoading(false);
@@ -110,36 +109,35 @@ export default function AuthPage({ onLoginSuccess }) {
     setSuccessMsg('');
 
     const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-    
+
     // Explicit Payload Mapping
     const payload = isLogin
-      ? { 
-          phone: formData.phone.trim(), 
-          password: formData.password 
-        }
-      : { 
-          name: formData.name.trim(),
-          phone: formData.phone.trim(), 
-          password: formData.password,
-          role,
-          targaNo: role === 'driver' ? formData.targaNo.trim() : undefined,
-          code: formData.code.trim(),
-          verificationCode: formData.code.trim() // Required by backend authController
-        };
+      ? {
+        phone: formData.phone.trim(),
+        password: formData.password
+      }
+      : {
+        name: formData.name.trim(),
+        phone: formData.phone.trim(),
+        password: formData.password,
+        role,
+        targaNo: role === 'driver' ? formData.targaNo.trim() : undefined,
+        code: formData.code.trim(),
+        verificationCode: formData.code.trim() // Required by backend authController
+      };
 
     console.log('📤 [Auth] Submitting', isLogin ? 'login' : 'registration', 'payload:', payload);
 
     try {
-      const res = await axios.post(`http://localhost:5001${endpoint}`, payload);
-      if (res.data.success) {
-        localStorage.setItem('taxi_pay_token', res.data.token);
-        localStorage.setItem('taxi_pay_user', JSON.stringify(res.data.user));
-        console.log('✅ [Auth] Success!');
-        onLoginSuccess(res.data.user);
+      if (isLogin) {
+        await login(payload);
+      } else {
+        await register(payload);
       }
+      console.log('✅ [Auth] Success!');
     } catch (err) {
-      const errorMsg = err.response?.data?.message || err.message || 'Authentication failed.';
-      console.error('❌ [Auth] Error:', errorMsg, 'Full response:', err.response?.data);
+      const errorMsg = err.message || 'Authentication failed.';
+      console.error('❌ [Auth] Error:', errorMsg);
       setError(errorMsg);
     } finally {
       setLoading(false);
@@ -155,9 +153,9 @@ export default function AuthPage({ onLoginSuccess }) {
 
   return (
     <div className="max-w-md mx-auto w-full text-white animate-fadeIn">
-      <div className="bg-neutral-900 rounded-3xl p-6 shadow-2xl border border-neutral-800">
-        <h2 className="text-3xl font-black text-center mb-1">{isLogin ? 'Welcome Back' : 'Create Account'}</h2>
-        <p className="text-gray-400 text-xs text-center mb-6">
+      <div className="glass-card rounded-3xl p-6">
+        <h2 className="text-3xl font-black text-center mb-1 text-white">{isLogin ? 'Welcome Back' : 'Create Account'}</h2>
+        <p className="text-gray-300 text-xs text-center mb-6">
           {isLogin ? 'Sign in to your TaxiPay account' : 'Register with phone verification'}
         </p>
 
@@ -168,18 +166,18 @@ export default function AuthPage({ onLoginSuccess }) {
           {!isLogin && (
             <>
               {/* Role Selector */}
-              <div className="flex bg-neutral-950 p-1 rounded-xl mb-3 border border-neutral-800">
+              <div className="flex glass-panel p-1 rounded-xl mb-3">
                 <button
                   type="button"
                   onClick={() => setRole('passenger')}
-                  className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${role === 'passenger' ? 'bg-blue-600 text-white' : 'text-gray-400'}`}
+                  className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${role === 'passenger' ? 'glass-button-primary' : 'text-gray-300 hover:text-white'}`}
                 >
                   Passenger
                 </button>
                 <button
                   type="button"
                   onClick={() => setRole('driver')}
-                  className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${role === 'driver' ? 'bg-blue-600 text-white' : 'text-gray-400'}`}
+                  className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${role === 'driver' ? 'glass-button-primary' : 'text-gray-300 hover:text-white'}`}
                 >
                   Minibus Driver
                 </button>
@@ -191,7 +189,7 @@ export default function AuthPage({ onLoginSuccess }) {
                 placeholder="Full Name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full bg-neutral-950 border border-neutral-800 focus:border-blue-500 outline-none rounded-xl p-3 text-sm"
+                className="w-full glass-input rounded-xl p-3 text-sm"
               />
 
               {role === 'driver' && (
@@ -201,7 +199,7 @@ export default function AuthPage({ onLoginSuccess }) {
                   placeholder="Plate Number (e.g. AA-3-A12345)"
                   value={formData.targaNo}
                   onChange={(e) => setFormData({ ...formData, targaNo: e.target.value })}
-                  className="w-full bg-neutral-950 border border-neutral-800 focus:border-blue-500 outline-none rounded-xl p-3 text-sm font-mono"
+                  className="w-full glass-input rounded-xl p-3 text-sm font-mono"
                 />
               )}
             </>
@@ -213,89 +211,100 @@ export default function AuthPage({ onLoginSuccess }) {
             placeholder="Phone Number (0912345678)"
             value={formData.phone}
             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-            className="w-full bg-neutral-950 border border-neutral-800 focus:border-blue-500 outline-none rounded-xl p-3 text-sm font-mono"
+            className="w-full glass-input rounded-xl p-3 text-sm font-mono"
           />
 
           {!isLogin && (
-            <div className="p-4 bg-neutral-950 border border-neutral-800 rounded-3xl space-y-4">
-              <div className="text-xs text-gray-400 uppercase tracking-[0.3em] font-semibold">
-                Verification Steps
-              </div>
-
-              <div className="rounded-3xl bg-neutral-900 border border-neutral-800 p-4 space-y-3">
-                <div className="text-sm font-bold text-blue-200">{verificationStatusText()}</div>
-                <div className="text-xs text-gray-500">
-                  1. Request verification. 2. Open TaxiPay bot in Telegram. 3. Share your contact. 4. Finish registration.
-                </div>
+            <div className="p-5 mt-4 glass-panel border border-emerald-500/20 rounded-3xl space-y-4 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+              <div className="flex items-center gap-2 mb-2">
+                <ShieldCheck size={18} className="text-emerald-400" />
+                <h4 className="text-sm font-bold text-white uppercase tracking-wider">Account Verification</h4>
               </div>
 
               {otpStep === 'verified' ? (
-                <div className="bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-2xl text-emerald-300 text-xs font-bold text-center">
-                  ✓ Telegram phone verified. Ready to register.
+                <div className="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-2xl flex items-center gap-3 animate-fadeIn">
+                  <CheckCircle2 size={24} className="text-emerald-400 shrink-0" />
+                  <div>
+                    <h5 className="text-emerald-400 font-bold text-sm">Verified Successfully</h5>
+                    <p className="text-[10px] text-gray-300">Your phone number is now linked. You can complete registration.</p>
+                  </div>
                 </div>
               ) : (
-                <>
+                <div className="space-y-3 relative z-10">
+                  <p className="text-xs text-gray-300 leading-relaxed">
+                    To secure your account, please verify your phone number using our official Telegram Bot.
+                  </p>
+
                   {otpStep === 'idle' && (
                     <button
                       type="button"
                       onClick={handleSendTelegramCode}
-                      disabled={loading}
-                      className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-2xl border border-blue-500/30 text-sm transition shadow-lg disabled:opacity-50"
+                      disabled={loading || !formData.phone}
+                      className="w-full glass-button hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold py-3.5 rounded-2xl text-xs flex items-center justify-center gap-2 transition disabled:opacity-50"
                     >
-                      {loading ? 'Requesting verification...' : 'Request Telegram verification'}
+                      {loading ? <Loader2 size={16} className="animate-spin" /> : <MessageCircle size={16} />}
+                      {loading ? 'Requesting...' : 'Start Telegram Verification'}
                     </button>
                   )}
 
                   {otpStep === 'code_sent' && (
-                    <div className="space-y-3">
+                    <div className="space-y-3 animate-fadeIn">
+                      <div className="bg-black/30 border border-white/10 p-4 rounded-2xl shadow-inner">
+                        <p className="text-center text-[11px] text-gray-400 mb-2">
+                          Your verification code is:
+                        </p>
+                        <p className="text-center">
+                          <span className="font-mono text-emerald-400 font-black text-2xl tracking-[0.2em]">{formData.code}</span>
+                        </p>
+                      </div>
+                      
                       {telegramBotLink && (
                         <a
                           href={telegramBotLink.replace('https://t.me/', 'tg://resolve?domain=')}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="block text-center w-full bg-linear-to-r from-blue-500 to-cyan-500 text-white font-bold py-3 rounded-2xl text-sm transition shadow-xl"
+                          className="w-full flex items-center justify-center gap-2 bg-[#229ED9] hover:bg-[#1C88BA] text-white font-bold py-3.5 rounded-2xl text-xs transition shadow-[0_0_15px_rgba(34,158,217,0.3)]"
                         >
-                          Open Telegram and share your contact
+                          <MessageCircle size={16} /> Open Telegram Bot
                         </a>
                       )}
+                      
                       <button
                         type="button"
                         onClick={() => handleVerifyCode(false)}
                         disabled={loading}
-                        className="w-full bg-neutral-800 hover:bg-neutral-700 text-white py-3 rounded-2xl text-sm font-bold transition border border-neutral-700 disabled:opacity-50"
+                        className="w-full glass-button text-gray-300 hover:text-white font-bold py-3 rounded-2xl text-xs flex items-center justify-center gap-2 transition"
                       >
-                        {loading ? 'Checking status...' : 'Check verification status'}
+                        {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                        {loading ? 'Checking Status...' : 'I have verified in Telegram'}
                       </button>
-                      <div className="text-xs text-gray-400 text-center">
-                        Verification code: <span className="font-mono text-white">{formData.code}</span>
-                      </div>
                     </div>
                   )}
-                </>
+                </div>
               )}
             </div>
           )}
-
           <input
             type="password"
             required
             placeholder="••••••••"
             value={formData.password}
             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-            className="w-full bg-neutral-950 border border-neutral-800 focus:border-blue-500 outline-none rounded-xl p-3 text-sm"
+            className="w-full glass-input rounded-xl p-3 text-sm"
           />
 
           <button
             type="submit"
             disabled={loading || (!isLogin && otpStep !== 'verified')}
-            className="w-full bg-blue-600 hover:bg-blue-500 font-bold py-3.5 rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+            className="w-full glass-button-primary font-bold py-3.5 rounded-xl transition mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Processing...' : isLogin ? 'Sign In' : 'Register Account'}
           </button>
         </form>
 
-        <div className="text-center mt-6 pt-4 border-t border-neutral-800">
-          <button onClick={toggleAuthMode} className="text-xs text-gray-400 hover:text-white transition">
+        <div className="text-center mt-6 pt-4 border-t border-white/10">
+          <button onClick={toggleAuthMode} className="text-xs text-gray-300 hover:text-white transition">
             {isLogin ? "Don't have an account? Register" : 'Already registered? Sign In'}
           </button>
         </div>

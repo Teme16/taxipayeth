@@ -1,88 +1,108 @@
+'use strict';
+
 const express = require('express');
-const { body, validationResult } = require('express-validator');
-const router = express.Router();
+const { body } = require('express-validator');
+
 const authController = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
+const validateRequest = require('../middleware/validateRequest');
+const {
+  authLimiter,
+  verificationLimiter,
+  pollingLimiter
+} = require('../middleware/rateLimiters');
 
-// Middleware to handle express-validator errors cleanly
-const validate = (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      message: errors.array()[0].msg, // Returns the first error message
-      errors: errors.array()
-    });
-  }
-  next();
-};
+const router = express.Router();
 
-// Common Input Validation Rules
 const phoneValidation = body('phone')
   .trim()
   .notEmpty()
   .withMessage('Phone number is required.');
 
-const codeValidation = body('code')
-  .trim()
-  .isLength({ min: 6, max: 6 })
-  .withMessage('Verification code must be exactly 6 digits.');
+const passwordValidation = body('password')
+  .isString()
+  .isLength({ min: 8, max: 128 })
+  .withMessage(
+    'Password must be between 8 and 128 characters.'
+  );
 
-// -----------------------------------------------------------------------------
-// Telegram Verification Flow Routes
-// -----------------------------------------------------------------------------
+const codeValidation = body('code')
+  .optional({ checkFalsy: true })
+  .trim()
+  .matches(/^\d{6}$/)
+  .withMessage(
+    'Verification code must contain exactly 6 digits.'
+  );
 
 router.post(
   '/request-telegram-verification',
+  verificationLimiter,
   phoneValidation,
-  validate,
+  validateRequest,
   authController.requestTelegramVerification
 );
 
 router.post(
   '/check-telegram-verification',
+  pollingLimiter,
   phoneValidation,
   codeValidation,
-  validate,
+  validateRequest,
   authController.checkTelegramVerification
 );
 
-// -----------------------------------------------------------------------------
-// Account Registration & Login Routes
-// -----------------------------------------------------------------------------
-
 router.post(
   '/register',
-  body('name').trim().notEmpty().withMessage('Name is required.'),
+  authLimiter,
+  body('name')
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage(
+      'Name must be between 2 and 100 characters.'
+    ),
   phoneValidation,
-  body('password')
-    .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters.'),
+  passwordValidation,
   body('role')
     .optional()
     .isIn(['passenger', 'driver'])
-    .withMessage('Invalid role specified. Standard registration only supports passenger or driver.'),
-  body('code')
-    .optional()
+    .withMessage('Invalid role.'),
+  body('targaNo')
+    .if(body('role').equals('driver'))
     .trim()
-    .isLength({ min: 6, max: 6 })
-    .withMessage('Verification code must be 6 digits.'),
-  validate,
+    .notEmpty()
+    .withMessage('Vehicle plate number is required for drivers.'),
+  codeValidation,
+  validateRequest,
   authController.register
 );
 
 router.post(
   '/login',
+  authLimiter,
   phoneValidation,
-  body('password').notEmpty().withMessage('Password is required.'),
-  validate,
+  body('password')
+    .isString()
+    .notEmpty()
+    .withMessage('Password is required.'),
+  validateRequest,
   authController.login
 );
 
-// -----------------------------------------------------------------------------
-// Telegram Webhook Endpoint
-// -----------------------------------------------------------------------------
+router.get(
+  '/me',
+  protect,
+  authController.getMe
+);
 
-router.post('/telegram-webhook', authController.telegramWebhook);
+router.post(
+  '/logout',
+  protect,
+  authController.logout
+);
+
+router.post(
+  '/telegram-webhook',
+  authController.telegramWebhook
+);
 
 module.exports = router;

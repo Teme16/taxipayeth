@@ -1,3 +1,6 @@
+'use strict';
+
+const bcrypt = require('bcryptjs');
 const TelegramBotPackage = require('node-telegram-bot-api');
 // Ensures compatibility whether imported as CommonJS default or named module
 const TelegramBot = TelegramBotPackage.default || TelegramBotPackage;
@@ -6,6 +9,7 @@ const VerificationCode = require('../models/VerificationCode');
 const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_WEBHOOK_URL = process.env.TELEGRAM_WEBHOOK_URL;
 const USE_WEBHOOK = Boolean(TELEGRAM_WEBHOOK_URL);
+
 // Robust Phone Normalizer (Handles +251..., 251..., 09... -> 9...)
 const normalizePhone = (phone = '') => {
   let cleaned = String(phone).replace(/\D/g, '');
@@ -18,6 +22,11 @@ let bot = null;
 
 if (TELEGRAM_TOKEN) {
   bot = new TelegramBot(TELEGRAM_TOKEN, { polling: !USE_WEBHOOK });
+
+  // Suppress polling error console spam
+  bot.on('polling_error', () => {
+    // Silently handle polling errors (e.g. EFATAL: fetch failed due to ISP blocks)
+  });
 
   if (USE_WEBHOOK) {
     const webhookUrl = `${TELEGRAM_WEBHOOK_URL.replace(/\/$/, '')}/api/auth/telegram-webhook`;
@@ -42,15 +51,33 @@ if (TELEGRAM_TOKEN) {
     }
 
     try {
-      const pending = await VerificationCode.findOne({ code, verified: false });
-      if (!pending) {
+      /*
+       * Codes are stored as bcrypt hashes in the `codeHash` field.
+       * We must find all pending records and compare against each hash
+       * because bcrypt is a one-way hash and cannot be queried directly.
+       */
+      const pendingRecords = await VerificationCode.find({
+        verified: false,
+        expiresAt: { $gt: new Date() }
+      }).select('+codeHash');
+
+      let matched = null;
+      for (const record of pendingRecords) {
+        const isMatch = await bcrypt.compare(code, record.codeHash);
+        if (isMatch) {
+          matched = record;
+          break;
+        }
+      }
+
+      if (!matched) {
         console.error('❌ [Telegram Bot] Code not found or expired:', code);
         return bot.sendMessage(chatId, '❌ Code not found or expired. Please start verification again from TaxiPay.');
       }
 
-      console.log('✅ [Telegram Bot] Code matched. Storing chatId:', chatId, 'Phone:', pending.phone);
-      pending.telegramChatId = chatId;
-      await pending.save();
+      console.log('✅ [Telegram Bot] Code matched. Storing chatId:', chatId, 'Phone:', matched.phone);
+      matched.telegramChatId = chatId;
+      await matched.save();
 
       await bot.sendMessage(
         chatId,
@@ -103,6 +130,7 @@ if (TELEGRAM_TOKEN) {
 
       console.log('✅ [Telegram Bot] Phone numbers match! Verification successful.');
       pending.verified = true;
+      pending.verifiedAt = new Date();
       pending.telegramChatId = chatId;
       await pending.save();
 

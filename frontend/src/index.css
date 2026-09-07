@@ -1,15 +1,35 @@
 @import "tailwindcss";
+@import "./glass.css";
 
 @theme {
   --color-taxi-blue-primary: #0187D3;
   --color-taxi-blue-gradient-end: #0A4A9B;
   --color-charcoal-card: #2D2D2D;
-  --color-taxi-blue-primary: #0187D3;
 }
 
 body {
-  background: linear-gradient(to bottom, #0187D3, #0A4A9B);
+  /* Vibrant Animated Mesh Gradient Background */
+  background: radial-gradient(circle at 15% 50%, rgba(1, 135, 211, 0.8), transparent 50%),
+              radial-gradient(circle at 85% 30%, rgba(10, 74, 155, 0.9), transparent 50%),
+              radial-gradient(circle at 50% 80%, rgba(20, 184, 166, 0.7), transparent 50%),
+              radial-gradient(circle at 50% 10%, rgba(139, 92, 246, 0.5), transparent 40%);
+  background-color: #0f172a;
+  background-size: 150% 150%;
+  animation: bg-shift 15s ease infinite alternate;
   min-height: 100vh;
   margin: 0;
   font-family: system-ui, -apple-system, sans-serif;
+  color: white;
+}
+
+@keyframes bg-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 50% 100%;
+  }
 }

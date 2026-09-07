@@ -3,7 +3,7 @@ import axios from 'axios';
 import { io } from 'socket.io-client';
 import { Bell, ArrowDownCircle, UserCheck, Edit3, X, Check } from 'lucide-react';
 
-export default function DriverDashboard({ 
+export default function DriverDashboard({
   driverId = null,
   onUserUpdate // 👈 Passed down from App.jsx / Parent Layout to update the Top Bar
 }) {
@@ -29,7 +29,7 @@ export default function DriverDashboard({
   const [profilePicFile, setProfilePicFile] = useState(null);
   const [digitalIdFile, setDigitalIdFile] = useState(null);
 
-  const token = localStorage.getItem('taxi_pay_token');
+  const token = localStorage.getItem('taxipay_token');
   const authHeader = { headers: { Authorization: `Bearer ${token}` } };
 
   // Fetch initial profile data on mount
@@ -77,7 +77,9 @@ export default function DriverDashboard({
     const driverRoomId = resolvedDriverId || driverId;
     if (!driverRoomId) return;
 
-    const socket = io('http://localhost:5001');
+    const socket = io('http://localhost:5001', {
+      withCredentials: true
+    });
 
     socket.emit('join_driver_room', driverRoomId);
 
@@ -128,7 +130,7 @@ export default function DriverDashboard({
         // 1. Update localStorage so top bar persists across page refreshes
         if (res.data.user) {
           localStorage.setItem('taxi_pay_user', JSON.stringify(res.data.user));
-          
+
           // 2. Refresh parent state instantly to update the Top Bar header
           if (onUserUpdate) {
             onUserUpdate(res.data.user);

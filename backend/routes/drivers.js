@@ -1,188 +1,303 @@
+'use strict';
+
 const express = require('express');
-const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const mongoose = require('mongoose');
+
 const Driver = require('../models/Driver');
 const User = require('../models/User');
-const { protect } = require('../middleware/auth');
 
-// Ensure uploads folder exists
-const uploadDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+const {
+  protect,
+  requireApprovedDriver
+} = require('../middleware/auth');
 
-// Multer Storage Setup
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
+const asyncHandler =
+  require('../utils/asyncHandler');
+
+const router = express.Router();
+
+const storage = multer.memoryStorage();
+
+const fileFilter = (
+  req,
+  file,
+  callback
+) => {
+  const allowed = new Set([
+    'image/jpeg',
+    'image/png',
+    'image/webp'
+  ]);
+
+  if (!allowed.has(file.mimetype)) {
+    return callback(
+      new Error(
+        'Only JPEG, PNG and WebP files are allowed.'
+      )
+    );
+  }
+
+  callback(null, true);
+};
+
+const upload = multer({
+  storage,
+  fileFilter,
+
+  limits: {
+    fileSize: 5 * 1024 * 1024
   }
 });
 
-const upload = multer({ storage });
-
-// Helper to construct safe query without triggering CastError
-const buildDriverQuery = (id) => {
-  const conditions = [{ driverId: id }];
-  
-  if (mongoose.Types.ObjectId.isValid(id)) {
-    conditions.push({ _id: id });
-  }
-
-  return { $or: conditions };
-};
-
-// POST /api/drivers/complete-profile
 router.post(
   '/complete-profile',
   protect,
   upload.fields([
-    { name: 'profilePic', maxCount: 1 },
-    { name: 'digitalId', maxCount: 1 }
-  ]),
-  async (req, res) => {
-    try {
-      const { driverId, fullName, birthDate, licenseNumber, emergencyContact, mobileNumber, address, targaNo } = req.body;
-
-      // Use JWT authenticated user ID to ensure accurate association, fallback to provided driverId
-      const actualDriverId = (req.user && req.user._id) ? req.user._id : driverId;
-
-      if (!actualDriverId) {
-        return res.status(400).json({ success: false, message: 'Driver ID is required.' });
-      }
-
-      // Build fields to update for Driver model
-      const updateData = { 
-        driverId: actualDriverId, 
-        isProfileCompleted: true 
-      };
-
-      if (fullName) updateData.fullName = fullName;
-      if (birthDate) updateData.birthDate = birthDate;
-      if (licenseNumber) updateData.licenseNumber = licenseNumber;
-      if (emergencyContact) updateData.emergencyContact = emergencyContact;
-      if (mobileNumber) updateData.mobileNumber = mobileNumber;
-      if (address) updateData.address = address;
-      if (targaNo) updateData.targaNo = targaNo;
-
-      // Extract uploaded filenames safely
-      let profilePicUrl = '';
-      let digitalIdUrl = '';
-
-      if (req.files && req.files['profilePic'] && req.files['profilePic'][0]) {
-        profilePicUrl = `/uploads/${req.files['profilePic'][0].filename}`;
-        updateData.profilePic = req.files['profilePic'][0].filename;
-      }
-
-      if (req.files && req.files['digitalId'] && req.files['digitalId'][0]) {
-        digitalIdUrl = `/uploads/${req.files['digitalId'][0].filename}`;
-        updateData.digitalIdDoc = req.files['digitalId'][0].filename;
-      }
-
-      // 1. Safe update with upsert on Driver model
-      let updatedDriver = await Driver.findOneAndUpdate(
-        buildDriverQuery(actualDriverId),
-        { $set: updateData },
-        { new: true, upsert: true, runValidators: false }
-      );
-
-      // 2. ⚡ SYNC WITH USER MODEL (Fixes Top Bar & Admin Panel Display)
-      const userConditions = [{ 'driverData.driverId': actualDriverId }];
-      if (mongoose.Types.ObjectId.isValid(actualDriverId)) {
-        userConditions.push({ _id: actualDriverId });
-      }
-
-      const userUpdateFields = {};
-      if (fullName) userUpdateFields.name = fullName.trim();
-      if (mobileNumber) userUpdateFields.phone = mobileNumber.trim();
-      if (birthDate) userUpdateFields['driverData.birthDate'] = birthDate;
-      if (licenseNumber) userUpdateFields['driverData.licenseNo'] = licenseNumber;
-      if (emergencyContact) userUpdateFields['driverData.emergencyContact'] = emergencyContact;
-      if (address) userUpdateFields['driverData.address'] = address;
-      if (targaNo) userUpdateFields['driverData.targaNo'] = targaNo.trim();
-      if (profilePicUrl) userUpdateFields['driverData.profileImage'] = profilePicUrl;
-      if (digitalIdUrl) userUpdateFields['driverData.documentUrl'] = digitalIdUrl;
-
-      const updatedUser = await User.findOneAndUpdate(
-        { $or: userConditions },
-        { $set: userUpdateFields },
-        { new: true }
-      );
-
-      // 3. ⚡ BROADCAST SOCKET EVENT TO ADMIN DASHBOARD
-      const io = req.app.get('io');
-      if (io && updatedUser) {
-        io.emit('user_updated', {
-          userId: updatedUser._id,
-          name: updatedUser.name,
-          phone: updatedUser.phone,
-          driverData: updatedUser.driverData
-        });
-      }
-
-      return res.status(200).json({
-        success: true,
-        message: 'Profile updated successfully!',
-        driver: updatedDriver,
-        user: updatedUser ? {
-          id: updatedUser._id,
-          name: updatedUser.name,
-          phone: updatedUser.phone,
-          role: updatedUser.role,
-          approvalStatus: updatedUser.approvalStatus,
-          driverData: updatedUser.driverData
-        } : null
-      });
-    } catch (error) {
-      console.error('Profile update failed:', error);
-      return res.status(500).json({ success: false, message: error.message });
+    {
+      name: 'profilePic',
+      maxCount: 1
+    },
+    {
+      name: 'digitalId',
+      maxCount: 1
     }
-  }
+  ]),
+  asyncHandler(async (req, res) => {
+    if (req.user.role !== 'driver') {
+      return res.status(403).json({
+        success: false,
+        message:
+          'Only driver accounts can create driver profiles.'
+      });
+    }
+
+    const {
+      birthDate,
+      licenseNumber,
+      emergencyContact,
+      mobileNumber,
+      address,
+      targaNo
+    } = req.body;
+
+    if (!targaNo) {
+      return res.status(422).json({
+        success: false,
+        message:
+          'Vehicle plate number is required.'
+      });
+    }
+
+    const profilePic =
+      req.files?.profilePic?.[0]
+        ? `data:${req.files.profilePic[0].mimetype};base64,${req.files.profilePic[0].buffer.toString('base64')}`
+        : '';
+
+    const digitalId =
+      req.files?.digitalId?.[0]
+        ? `data:${req.files.digitalId[0].mimetype};base64,${req.files.digitalId[0].buffer.toString('base64')}`
+        : '';
+
+    const driver =
+      await Driver.findOneAndUpdate(
+        {
+          user: req.user._id
+        },
+        {
+          $set: {
+            targaNo,
+            birthDate:
+              birthDate || null,
+            licenseNumber:
+              licenseNumber || '',
+            emergencyContact:
+              emergencyContact || '',
+            mobileNumber:
+              mobileNumber ||
+              req.user.phone,
+            address:
+              address || '',
+            ...(profilePic && {
+              profilePic
+            }),
+            ...(digitalId && {
+              digitalIdDocument: {
+                url: digitalId,
+                uploadedAt: new Date()
+              }
+            }),
+            isProfileCompleted: true
+          }
+        },
+        {
+          returnDocument: 'after',
+          upsert: true,
+          runValidators: true,
+          setDefaultsOnInsert: true
+        }
+      );
+
+    await User.findByIdAndUpdate(
+      req.user._id,
+      {
+        $set: {
+          approvalStatus: 'pending'
+        }
+      }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message:
+        'Driver profile saved successfully.',
+      driver
+    });
+  })
 );
 
-// GET /api/drivers/:id - Fetch single driver profile
-router.get('/:id', async (req, res) => {
-  try {
+router.get(
+  '/me',
+  protect,
+  asyncHandler(async (req, res) => {
+    const driver =
+      await Driver.findOne({
+        user: req.user._id
+      }).populate(
+        'user',
+        'name phone email role avatar approvalStatus'
+      );
+
+    if (!driver) {
+      return res.status(404).json({
+        success: false,
+        message:
+          'Driver profile not found.'
+      });
+    }
+
+    return res.json({
+      success: true,
+      driver
+    });
+  })
+);
+
+router.get(
+  '/:id',
+  protect,
+  asyncHandler(async (req, res) => {
     const { id } = req.params;
-    let driver = await Driver.findOne(buildDriverQuery(id));
+    const query = { $or: [] };
 
-    // Fallback: If driver is missing in 'drivers', check 'users' and auto-create entry
+    if (mongoose.isValidObjectId(id)) {
+      query.$or.push({ user: id }, { _id: id });
+    } else {
+      query.$or.push({ driverId: id.toUpperCase() }, { targaNo: id.toUpperCase() });
+    }
+
+    const driver =
+      await Driver.findOne(query).populate(
+        'user',
+        'name phone avatar'
+      );
+
     if (!driver) {
-      const userConditions = [{ 'driverData.driverId': id }];
-      if (mongoose.Types.ObjectId.isValid(id)) {
-        userConditions.push({ _id: id });
-      }
+      return res.status(404).json({
+        success: false,
+        message:
+          'Driver not found.'
+      });
+    }
 
-      const user = await User.findOne({ $or: userConditions });
+    return res.json({
+      success: true,
+      driver
+    });
+  })
+);
 
-      if (user && user.role === 'driver') {
-        const assignedDriverId = user.driverData?.driverId || id;
+router.post(
+  '/reset-trip',
+  protect,
+  asyncHandler(async (req, res) => {
+    if (req.user.role !== 'driver') {
+      return res.status(403).json({ success: false, message: 'Only drivers can reset trips.' });
+    }
 
-        driver = new Driver({
-          driverId: assignedDriverId,
-          fullName: user.name,
-          mobileNumber: user.phone,
-          targaNo: user.driverData?.targaNo || 'PENDING'
+    const driver = await Driver.findOneAndUpdate(
+      { user: req.user._id },
+      { $set: { lastTripResetAt: new Date() } },
+      { new: true }
+    );
+
+    if (!driver) {
+      return res.status(404).json({ success: false, message: 'Driver profile not found.' });
+    }
+
+    // Broadcast an event so clients (like passenger scanners) can react if needed
+    const io = req.app.get('io');
+    if (io) {
+      const { getDriverRoomName } = require('../utils/driverRooms');
+      io.to(getDriverRoomName(req.user._id)).emit('seat_status_changed', {
+        seatNumbers: Array.from({ length: 15 }, (_, i) => i + 1),
+        status: 'unpaid'
+      });
+    }
+
+    return res.json({ success: true, message: 'Trip reset successfully.', lastTripResetAt: driver.lastTripResetAt });
+  })
+);
+
+router.get(
+  '/:id/seats',
+  protect,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const query = { $or: [] };
+
+    if (mongoose.isValidObjectId(id)) {
+      query.$or.push({ user: id }, { _id: id });
+    } else {
+      query.$or.push({ driverId: id.toUpperCase() }, { targaNo: id.toUpperCase() });
+    }
+
+    const driver = await Driver.findOne(query).select('user lastTripResetAt');
+    if (!driver) {
+      return res.status(404).json({ success: false, message: 'Driver not found.' });
+    }
+
+    const Transaction = require('../models/Transaction');
+    const txQuery = {
+      driver: driver.user,
+      status: 'completed',
+      type: { $ne: 'withdraw' }
+    };
+    
+    if (driver.lastTripResetAt) {
+      txQuery.createdAt = { $gte: driver.lastTripResetAt };
+    } else {
+      // Fallback to today if no reset timestamp exists
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      txQuery.createdAt = { $gte: startOfDay };
+    }
+
+    const transactions = await Transaction.find(txQuery).select('seats status');
+    
+    const occupiedSeats = {};
+    transactions.forEach(t => {
+      if (Array.isArray(t.seats)) {
+        t.seats.forEach(s => {
+          occupiedSeats[s] = 'paid';
         });
-
-        await driver.save();
       }
-    }
+    });
 
-    if (!driver) {
-      return res.status(404).json({ success: false, message: `Driver not found for ID: ${id}` });
-    }
-
-    return res.status(200).json({ success: true, driver });
-  } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
-  }
-});
+    return res.json({ success: true, occupiedSeats });
+  })
+);
 
 module.exports = router;

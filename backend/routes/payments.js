@@ -1,87 +1,252 @@
+'use strict';
+
 const express = require('express');
-const router = express.Router();
-const Transaction = require('../models/Transaction');
-const { getDriverRoomName } = require('../utils/driverRooms');
+const { body } =
+  require('express-validator');
 
-const generateReference = () => `TXN-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+const { protect } =
+  require('../middleware/auth');
 
-const handleCheckout = async (req, res) => {
-  try {
-    const { driverId, targaNo, passengerName, passengerPhone, seats, amount, userId, tripId } = req.body;
+const validateRequest =
+  require('../middleware/validateRequest');
 
-    if (!driverId || !seats || !amount) {
-      return res.status(400).json({ success: false, message: 'Missing payment details.' });
-    }
+const {
+  paymentLimiter
+} =
+  require('../middleware/rateLimiters');
 
-    const seatNumbers = Array.isArray(seats) ? seats.map(Number) : [Number(seats)];
-    const paymentReference = generateReference();
+const asyncHandler =
+  require('../utils/asyncHandler');
 
-    const transaction = new Transaction({
-      user: userId || undefined,
-      trip: tripId || undefined,
-      amount: Number(amount),
-      type: 'payment',
-      status: 'completed',
-      reference: paymentReference,
-      metadata: {
-        driverId,
-        targaNo,
-        passengerName: passengerName || passengerPhone || 'Passenger',
-        passengerPhone: passengerPhone || '',
-        seats: seatNumbers
+const {
+  checkout
+} =
+  require('../services/paymentService');
+
+const chapaController = require('../controllers/chapaController');
+
+const {
+  getDriverRoomName
+} =
+  require('../utils/driverRooms');
+
+module.exports = function paymentRoutes(
+  io
+) {
+  const router = express.Router();
+
+  const validation = [
+    body('driverId')
+      .isMongoId()
+      .withMessage(
+        'A valid driver ID is required.'
+      ),
+      
+    body('amount')
+      .isNumeric()
+      .withMessage(
+        'Payment amount is required.'
+      ),
+
+    body('seats')
+      .isArray({
+        min: 1,
+        max: 20
+      })
+      .withMessage(
+        'At least one seat is required.'
+      ),
+
+    body('seats.*')
+      .isInt({
+        min: 1,
+        max: 100
+      })
+      .withMessage(
+        'Seat numbers must be valid integers.'
+      ),
+
+    body('password')
+      .isString()
+      .notEmpty()
+      .withMessage(
+        'Payment password is required.'
+      )
+  ];
+
+  const handleCheckout =
+    asyncHandler(
+      async (req, res) => {
+        const idempotencyKey =
+          req.get(
+            'Idempotency-Key'
+          );
+
+        if (
+          !idempotencyKey ||
+          idempotencyKey.length > 200
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              'A valid Idempotency-Key header is required.'
+          });
+        }
+
+        const result =
+          await checkout({
+            userId:
+              req.user._id,
+            driverId:
+              req.body.driverId,
+            amount:
+              req.body.amount,
+            seats:
+              req.body.seats,
+            password:
+              req.body.password,
+            idempotencyKey
+          });
+
+        const transaction =
+          result.transaction;
+
+        if (
+          !result.alreadyProcessed
+        ) {
+          const socketIo =
+            io ||
+            req.app.get('io');
+
+          if (socketIo) {
+            const driverUserIdStr = String(transaction.driver);
+            const event = {
+              driverId: driverUserIdStr,
+              seatNumbers: transaction.seats,
+              status: 'paid',
+              passengerName: req.body.passengerName || transaction.passengerSnapshot?.name,
+              amount: transaction.amount,
+              transactionId: transaction.transactionId,
+              timestamp: transaction.createdAt
+            };
+
+            // Emit to the driver's User._id room (server auto-joins this on connect)
+            const driverRoom = getDriverRoomName(driverUserIdStr);
+            const userRoom = `user:${driverUserIdStr}`;
+
+            console.log(`📡 Emitting seat_status_changed to rooms: [${driverRoom}], [${userRoom}]`, {
+              seatNumbers: event.seatNumbers,
+              amount: event.amount,
+              status: event.status
+            });
+
+            socketIo
+              .to(driverRoom)
+              .emit(
+                'seat_status_changed',
+                event
+              );
+
+            // Also emit to the user:<id> personal room as a fallback
+            socketIo
+              .to(`user:${driverUserIdStr}`)
+              .emit(
+                'seat_status_changed',
+                event
+              );
+
+            // Also emit to the Driver document _id room in case the frontend joined with it
+            const Driver = require('../models/Driver');
+            Driver.findOne({ user: driverUserIdStr })
+              .select('_id driverId')
+              .lean()
+              .then((driverDoc) => {
+                if (driverDoc) {
+                  if (driverDoc._id) {
+                    socketIo
+                      .to(getDriverRoomName(String(driverDoc._id)))
+                      .emit('seat_status_changed', event);
+                  }
+                  if (driverDoc.driverId) {
+                    socketIo
+                      .to(getDriverRoomName(driverDoc.driverId))
+                      .emit('seat_status_changed', event);
+                  }
+                }
+              })
+              .catch((err) => {
+                console.error('Driver room lookup error:', err.message);
+              });
+          }
+        }
+
+        return res
+          .status(
+            result.alreadyProcessed
+              ? 200
+              : 201
+          )
+          .json({
+            success: true,
+            message: "Payment successful",
+            receipt: {
+              transactionId: transaction.transactionId,
+              amountPaid: transaction.amount,
+              seatsBooked: transaction.seats,
+              driverName: req.body.driverName || "Driver",
+              targaNo: req.body.targaNo || "Unknown",
+              timestamp: transaction.createdAt
+            }
+          });
       }
-    });
+    );
 
-    await transaction.save();
+  router.post(
+    '/checkout',
+    protect,
+    paymentLimiter,
+    validation,
+    validateRequest,
+    handleCheckout
+  );
 
-    const io = req.app.get('io');
-    if (io) {
-      const roomName = getDriverRoomName(driverId);
-      io.to(roomName).emit('seat_status_changed', {
-        seatNumbers,
-        status: 'paid',
-        passengerName: passengerName || passengerPhone || 'Passenger',
-        amount: Number(amount),
-        transactionId: paymentReference
-      });
+  // Chapa Wallet Deposit Routes
+  router.post('/chapa/initialize', protect, chapaController.initializePayment);
+  router.get('/chapa/verify/:tx_ref', protect, chapaController.verifyPayment);
 
-      io.to(roomName).emit('payment_received', {
-        message: 'Instant payment collection alert',
-        amount: Number(amount),
-        seats: seatNumbers.length,
-        seatNumbers,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        transactionId: paymentReference
-      });
-    }
+  // Chapa Wallet Withdraw Routes
+  router.post('/chapa/withdraw', protect, chapaController.withdraw);
+  router.get('/chapa/banks', protect, chapaController.getBanks);
+  const Transaction = require('../models/Transaction');
 
-    return res.status(200).json({
-      success: true,
-      receipt: {
-        transactionId: paymentReference,
-        targaNo,
-        amountPaid: Number(amount),
-        seatsBooked: seatNumbers,
-        timestamp: transaction.createdAt
+  router.get(
+    '/history',
+    protect,
+    asyncHandler(
+      async (req, res) => {
+        const query = req.user.role === 'driver' 
+          ? { driver: req.user._id } 
+          : { user: req.user._id };
+
+        const transactions = await Transaction.find(query)
+          .sort({ createdAt: -1 })
+          .limit(50);
+
+        let lastTripResetAt = null;
+        if (req.user.role === 'driver') {
+          const Driver = require('../models/Driver');
+          const driver = await Driver.findOne({ user: req.user._id }).select('lastTripResetAt').lean();
+          if (driver) lastTripResetAt = driver.lastTripResetAt;
+        }
+
+        return res.json({
+          success: true,
+          transactions,
+          lastTripResetAt
+        });
       }
-    });
-  } catch (err) {
-    console.error('Payment Error:', err);
-    return res.status(500).json({ success: false, message: 'Payment gateway error' });
-  }
+    )
+  );
+
+  return router;
 };
-
-router.post('/checkout', handleCheckout);
-router.post('/process-fare', handleCheckout);
-
-router.get('/history/:driverId', async (req, res) => {
-  try {
-    const { driverId } = req.params;
-    const transactions = await Transaction.find({ 'metadata.driverId': driverId }).sort({ createdAt: -1 });
-    res.json({ success: true, count: transactions.length, transactions });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-module.exports = (io) => router;

@@ -5,6 +5,7 @@ import { X, QrCode, Download } from 'lucide-react';
 export default function DriverQRModal({
   driverName,
   driverId,
+  userId,
   targaNo,
   tariffPerSeat = 15,
   onClose
@@ -15,6 +16,7 @@ export default function DriverQRModal({
   const qrPayload = JSON.stringify({
     driverName: driverName || 'Driver',
     driverId: driverId || 'DRV-UNKNOWN',
+    userId: userId || '',
     targaNo: targaNo || 'UNREGISTERED',
     tariffPerSeat: tariffPerSeat
   });
