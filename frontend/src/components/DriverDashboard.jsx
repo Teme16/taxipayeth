@@ -51,7 +51,7 @@ export default function DriverDashboard({
   useEffect(() => {
     const fetchDriverProfile = async () => {
       try {
-        const res = await axios.get(`http://localhost:5001/api/drivers/${resolvedDriverId}`, authHeader);
+        const res = await axios.get(`https://taxipayeth.onrender.com/api/drivers/${resolvedDriverId}`, authHeader);
         if (res.data.success && res.data.driver) {
           const d = res.data.driver;
           setFormData({
@@ -77,7 +77,7 @@ export default function DriverDashboard({
     const driverRoomId = resolvedDriverId || driverId;
     if (!driverRoomId) return;
 
-    const socket = io('http://localhost:5001', {
+    const socket = io('https://taxipayeth.onrender.com', {
       withCredentials: true
     });
 
@@ -117,7 +117,7 @@ export default function DriverDashboard({
       if (digitalIdFile) data.append('digitalId', digitalIdFile);
 
       const res = await axios.post(
-        'http://localhost:5001/api/drivers/complete-profile',
+        'https://taxipayeth.onrender.com/api/drivers/complete-profile',
         data,
         {
           headers: {
