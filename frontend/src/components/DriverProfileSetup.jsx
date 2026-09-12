@@ -57,7 +57,7 @@ export default function DriverProfileSetup({ driverId, initialData = {}, onCompl
 
       const token = localStorage.getItem('taxipay_token');
 
-      const response = await fetch('http://localhost:5001/api/drivers/complete-profile', {
+      const response = await fetch('https://taxipayeth.onrender.com/api/drivers/complete-profile', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
