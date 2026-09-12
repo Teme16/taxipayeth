@@ -39,7 +39,7 @@ export const SocketProvider = ({
 
         const instance = io(
             import.meta.env.VITE_SOCKET_URL ||
-            'http://localhost:5001',
+            'https://taxipayeth.onrender.com',
             {
                 auth: {
                     token
