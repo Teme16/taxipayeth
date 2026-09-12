@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { X, User, Phone, Wallet, ShieldCheck, CheckCircle, Save, Loader2, AlertCircle, Camera } from 'lucide-react';
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://taxipayeth.onrender.com';
 
 export default function ProfilePage({ user, balance, onClose, onProfileUpdated }) {
   const { updateUser } = useAuth();
