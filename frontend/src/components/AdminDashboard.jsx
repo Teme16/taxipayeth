@@ -14,7 +14,7 @@ import {
 const API_BASE_URL =
   (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_BASE_URL) ||
   (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL) ||
-  'http://localhost:5001';
+  'https://taxipayeth.onrender.com';
 
 export default function AdminDashboard() {
   const [users, setUsers] = useState([]);
@@ -865,7 +865,7 @@ export default function AdminDashboard() {
             {selectedUser.driverData?.profileImage && (
               <div className="mb-4 rounded-3xl overflow-hidden border border-white/10 shadow-inner">
                 <img
-                  src={`http://localhost:5001${selectedUser.driverData.profileImage}`}
+                  src={`https://taxipayeth.onrender.com${selectedUser.driverData.profileImage}`}
                   alt="Driver Profile"
                   className="w-full h-44 object-cover"
                   onError={(e) => {
@@ -901,7 +901,7 @@ export default function AdminDashboard() {
                 {selectedUser.driverData?.documentUrl || selectedUser.driverData?.licenseImage ? (
                   <div className="relative group glass-panel border border-white/10 rounded-2xl overflow-hidden p-2">
                     <img
-                      src={`http://localhost:5001${selectedUser.driverData.documentUrl || selectedUser.driverData.licenseImage}`}
+                      src={`https://taxipayeth.onrender.com${selectedUser.driverData.documentUrl || selectedUser.driverData.licenseImage}`}
                       alt="Driver Document"
                       className="w-full h-48 object-cover rounded-xl"
                       onError={(e) => {
@@ -910,7 +910,7 @@ export default function AdminDashboard() {
                       }}
                     />
                     <a
-                      href={`http://localhost:5001${selectedUser.driverData.documentUrl || selectedUser.driverData.licenseImage}`}
+                      href={`https://taxipayeth.onrender.com${selectedUser.driverData.documentUrl || selectedUser.driverData.licenseImage}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="absolute bottom-4 right-4 bg-black/80 hover:bg-black text-white text-xs font-bold px-3 py-1.5 rounded-lg border border-white/20 backdrop-blur-sm transition"
