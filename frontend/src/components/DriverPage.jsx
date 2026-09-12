@@ -9,7 +9,7 @@ import DriverQRModal from './DriverQRModal';
 import DriverReceiptModal from './DriverReceiptModal';
 
 // Dynamic API & Socket URL setup
-const API_BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL) || 'http://localhost:5001';
+const API_BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL) || 'https://taxipayeth.onrender.com';
 const SOCKET_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SOCKET_URL) || API_BASE_URL;
 
 const socket = io(SOCKET_URL, {
