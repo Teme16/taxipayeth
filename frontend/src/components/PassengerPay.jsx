@@ -34,7 +34,7 @@ const API_BASE_URL =
   (typeof import.meta !== 'undefined' &&
     import.meta.env &&
     import.meta.env.VITE_API_BASE_URL) ||
-  'http://localhost:5001';
+  'https://taxipayeth.onrender.com';
 
 /*
  * Creates a browser-compatible idempotency key.
