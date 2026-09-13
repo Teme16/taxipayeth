@@ -29,7 +29,7 @@ const config = Object.freeze({
     process.env.NODE_ENV || 'development',
 
   PORT:
-    Number(process.env.PORT) || 5001,
+    Number(process.env.PORT) || 10000,
 
   /* ---- MongoDB ---- */
   MONGO_URI:
