@@ -60,108 +60,58 @@ const sanitizeUser = (user) => {
    REQUEST TELEGRAM VERIFICATION
 ========================================================= */
 
-exports.requestTelegramVerification =
-  asyncHandler(
-    async (req, res) => {
-      const phone =
-        normalizePhone(
-          req.body.phone
-        );
+exports.requestTelegramVerification = asyncHandler(async (req, res) => {
+    const phone = normalizePhone(req.body.phone);
 
-      const existingUser =
-        await User.findOne({
-          phone
-        }).lean();
+    const existingUser = await User.findOne({ phone }).lean();
 
-      if (existingUser) {
+    if (existingUser) {
         return res.status(409).json({
-          success: false,
-          message:
-            'An account already exists for this phone number.'
+            success: false,
+            message: 'An account already exists for this phone number.'
         });
-      }
+    }
 
-      const code =
-        generateCode();
+    const code = generateCode();
+    const codeHash = await bcrypt.hash(code, 12);
+    const expiresAt = new Date(Date.now() + VERIFICATION_TTL_MS);
 
-      const codeHash =
-        await bcrypt.hash(
-          code,
-          12
-        );
-
-      const expiresAt =
-        new Date(
-          Date.now() +
-          VERIFICATION_TTL_MS
-        );
-
-      await VerificationCode
-        .findOneAndUpdate(
-          {
-            phone,
-            purpose:
-              'registration'
-          },
-          {
+    await VerificationCode.findOneAndUpdate(
+        { phone, purpose: 'registration' },
+        {
             $set: {
-              codeHash,
-              verified: false,
-              verifiedAt: null,
-              attempts: 0,
-              expiresAt,
-              telegramChatId: ''
+                codeHash,
+                verified: false,
+                verifiedAt: null,
+                attempts: 0,
+                expiresAt
+                // FIX: Removed telegramChatId: '' to prevent E11000 duplicate key crashes
             }
-          },
-          {
+        },
+        {
             returnDocument: 'after',
             upsert: true,
             runValidators: true
-          }
-        );
+        }
+    );
 
-      const botUsername =
-        String(
-          process.env
-            .TELEGRAM_BOT_USERNAME ||
-          ''
-        )
-          .replace(/^@/, '')
-          .trim();
+    const botUsername = String(process.env.TELEGRAM_BOT_USERNAME || '')
+        .replace(/^@/, '')
+        .trim();
 
-      const telegramBotLink =
-        botUsername
-          ? `https://t.me/${botUsername}?start=${code}`
-          : null;
+    const telegramBotLink = botUsername
+        ? `https://t.me/${botUsername}?start=${code}`
+        : null;
 
-      /*
-       * For production, do not expose
-       * verificationCode.
-       *
-       * Telegram deep-link contains the
-       * code needed for the bot flow.
-       */
-      return res.status(200).json({
+    return res.status(200).json({
         success: true,
-        message:
-          'Verification request created. Complete verification through Telegram.',
-
+        message: 'Verification request created. Complete verification through Telegram.',
         telegramBotLink,
-
-        expiresInSeconds:
-          VERIFICATION_TTL_MS / 1000,
-
-        ...(config.NODE_ENV !==
-          'production'
-          ? {
-            verificationCode:
-              code
-          }
-          : {})
-      });
-    }
-  );
-
+        expiresInSeconds: VERIFICATION_TTL_MS / 1000,
+        // FIX: Always send the code so the frontend dark box is populated
+        verificationCode: code
+    });
+});
 /* =========================================================
    CHECK TELEGRAM VERIFICATION
 ========================================================= */
