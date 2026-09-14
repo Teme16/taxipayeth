@@ -108,8 +108,13 @@ exports.requestTelegramVerification = asyncHandler(async (req, res) => {
         message: 'Verification request created. Complete verification through Telegram.',
         telegramBotLink,
         expiresInSeconds: VERIFICATION_TTL_MS / 1000,
-        // FIX: Always send the code so the frontend dark box is populated
-        verificationCode: code
+        ...(config.NODE_ENV !==
+          'production'
+          ? {
+            verificationCode:
+              code
+          }
+          : {})
     });
 });
 /* =========================================================
@@ -302,14 +307,19 @@ exports.register =
             verification._id
         });
 
+      // Send "Under Review" Telegram Notification
+      const { bot } = require('../config/telegram');
+      if (bot && user.telegramChatId) {
+        const reviewMsg = `🎉 *Registration Successful!*\n\nHello ${user.name}, your TaxiPay account has been created and is currently **under review** by our team.\n\nPlease wait for an approval message before attempting to log in.`;
+        
+        bot.sendMessage(user.telegramChatId, reviewMsg, { parse_mode: 'Markdown' })
+           .catch(err => console.error('Telegram notification failed:', err));
+      }
+
       return res.status(201).json({
         success: true,
-
-        token:
-          createToken(user),
-
-        user:
-          sanitizeUser(user)
+        message: 'Registration successful. Account under review.',
+        user: sanitizeUser(user)
       });
     }
   );
