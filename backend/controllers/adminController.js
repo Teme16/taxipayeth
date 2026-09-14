@@ -248,6 +248,25 @@ exports.approveUser = asyncHandler(async (req, res) => {
     if (!user) {
         throw createHttpError(404, 'User not found.');
     }
+   // Send Telegram Notification
+    const { bot } = require('../config/telegram');
+    if (bot && user.telegramChatId) {
+        let msg = '';
+        if (approvalStatus === 'approved') {
+            const loginUrl = 'https://frontend-nine-lyart-jigjn9fy6c.vercel.app'; // URL to the login page
+            msg = `✅ *Account Approved!*\n\nCongratulations ${user.name}, your TaxiPay account has been verified and approved.\n\nYou can now log in and access the system here:\n👉 [Log in to TaxiPay](${loginUrl})`;
+        } else if (approvalStatus === 'rejected') {
+            msg = `❌ *Account Rejected*\n\nHello ${user.name}, unfortunately your TaxiPay account application has been rejected by our team. Please contact support for more details.`;
+        }
+
+        if (msg) {
+            bot.sendMessage(user.telegramChatId, msg, {
+                parse_mode: 'Markdown',
+                disable_web_page_preview: true
+            }).catch(err => console.error('Telegram notification failed:', err));
+        }
+    }
+
 
     await SystemLog.logEvent({
         action: `admin_${approvalStatus}_user`,
