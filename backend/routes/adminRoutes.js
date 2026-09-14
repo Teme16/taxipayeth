@@ -26,9 +26,13 @@ const {
     createRoute,
     updateRoute,
     deleteRoute,
+    listZones,
+    createZone,
+    deleteZone,
     stats,
     getAnalytics,
-    listLogs
+    listLogs,
+    broadcast
 } = adminController;
 
 /* =========================
@@ -124,7 +128,27 @@ router.delete(
     ...adminAuth,
     deleteRoute
 );
+/* =========================
+   ZONES
+========================= */
 
+router.get(
+    '/zones',
+    ...adminAuth,
+    listZones
+);
+
+router.post(
+    '/zones',
+    ...adminAuth,
+    createZone
+);
+
+router.delete(
+    '/zones/:id',
+    ...adminAuth,
+    deleteZone
+);
 /* =========================
    DASHBOARD
 ========================= */
@@ -146,5 +170,9 @@ router.get(
     ...adminAuth,
     listLogs
 );
-
+router.post(
+    '/broadcast',
+    ...adminAuth,
+    broadcast
+);
 module.exports = router;
