@@ -24,10 +24,10 @@ export default function SeatPicker({ selectedSeats, setSelectedSeats, seatStates
 
   const getSeatColor = (seatNum) => {
     const status = seatStates[seatNum];
-    if (status === 'paid') return 'bg-red-500/20 border-red-500 text-red-400 cursor-not-allowed'; // Red for taken/paid
+    if (status === 'paid') return 'bg-emerald-500/20 border-emerald-500 text-emerald-400 cursor-not-allowed'; // Green
     if (status === 'pending') return 'bg-amber-500/20 border-amber-500 text-amber-400'; // Yellow
     if (selectedSeats.includes(seatNum)) return 'bg-taxi-blue-primary text-white border-blue-400 scale-105'; // Selected
-    return 'bg-neutral-800 border-neutral-700 text-gray-400 hover:border-gray-500 hover:text-white cursor-pointer'; // Default Unpaid state
+    return 'bg-neutral-800 border-neutral-700 text-gray-400 hover:border-gray-500 hover:text-white cursor-pointer'; // Default Red/Unpaid state
   };
 
   return (
