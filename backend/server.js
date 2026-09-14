@@ -36,6 +36,7 @@ const userRoutes = require('./routes/userRoutes');
 const driverRoutes = require('./routes/drivers');
 const paymentRoutesFactory = require('./routes/payments');
 const adminRoutes = require('./routes/adminRoutes');
+const tariffRoutes = require('./routes/tariffs');
 
 const {
   getDriverRoomName
@@ -484,7 +485,10 @@ app.use(
   '/api/admin',
   adminRoutes
 );
-
+app.use(
+  '/api/tariffs',
+  tariffRoutes
+);
 /* =========================================================
    ERROR HANDLING
 ========================================================= */
@@ -647,6 +651,13 @@ io.on(
      * emit those events after a
      * successful database commit.
      */
+     /* Driver location updates for admin fleet monitoring */
+    if (role === 'driver') {
+      socket.on('driver_location_update', (location) => {
+        // location = { lat, lng, bearing, etc }
+        io.emit('driver_location_changed', { driverId: userId, location, timestamp: Date.now() });
+      });
+    }
 
     socket.on(
       'disconnect',
