@@ -873,7 +873,7 @@ const handleBroadcast = async (e) => {
                 </tbody>
               </table>
             </div>
-            </div>
+            
           )}</div>
         </div>
       )}
