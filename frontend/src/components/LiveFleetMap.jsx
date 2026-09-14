@@ -49,8 +49,7 @@ export default function LiveFleetMap() {
   }, []);
 
   return (
-    <div style={{ height: '100%', width: '100%', position: 'relative', zIndex: 10 }}>
-      <MapContainer 
+<div style={{ height: '500px', width: '100%', minHeight: '500px', position: 'relative', zIndex: 10 }}>      <MapContainer 
         center={[9.03, 38.74]} // Default to Addis Ababa
         zoom={13} 
         style={{ height: '100%', width: '100%', borderRadius: '1rem' }}
