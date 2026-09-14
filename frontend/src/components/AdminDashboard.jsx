@@ -10,6 +10,7 @@ import {
   Tooltip,
   CartesianGrid
 } from 'recharts';
+import LiveFleetMap from './LiveFleetMap';
 
 const API_BASE_URL =
   (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_BASE_URL) ||
@@ -39,6 +40,9 @@ export default function AdminDashboard() {
   const [resetPassUser, setResetPassUser] = useState(null);
   const [newPasswordInput, setNewPasswordInput] = useState('');
   const [deleteConfirmUser, setDeleteConfirmUser] = useState(null);
+// Broadcast States
+  const [broadcastAudience, setBroadcastAudience] = useState('all');
+  const [broadcastMessage, setBroadcastMessage] = useState('');
 
   // Live Online Users Tracker & Toast States
   const [onlineUserIds, setOnlineUserIds] = useState([]);
@@ -50,13 +54,17 @@ export default function AdminDashboard() {
   const fetchAdminData = async () => {
     try {
       const [usersRes, statsRes, chartRes] = await Promise.all([
-        axios.get(`${API_BASE_URL}/api/admin/users?search=${search}&role=${roleFilter}&status=${statusFilter}`, authHeader),
+        axios.get(`${API_BASE_URL}/api/admin/users?search=${search}&role=${roleFilter}&approvalStatus=${statusFilter}`, authHeader),
         axios.get(`${API_BASE_URL}/api/admin/stats`, authHeader),
         axios.get(`${API_BASE_URL}/api/admin/analytics`, authHeader)
       ]);
       setUsers(usersRes.data.users);
-      setStats(statsRes.data.stats);
-
+      setStats({
+        totalUsers: statsRes.data.stats?.users?.total || 0,
+        drivers: statsRes.data.stats?.users?.drivers || 0,
+        passengers: statsRes.data.stats?.users?.passengers || 0,
+        pendingApprovals: statsRes.data.stats?.users?.pendingApprovals || 0
+      });
       const analytics = chartRes.data.analytics || {};
       const newUsers = analytics.newUsers || [];
       const formattedChart = newUsers.map(u => ({
@@ -192,7 +200,11 @@ export default function AdminDashboard() {
 
   // ⚡ Socket.io Real-Time Event Setup
   useEffect(() => {
-    const socket = io(API_BASE_URL);
+    const socketToken = localStorage.getItem('taxipay_token');
+    const socket = io(API_BASE_URL, {
+      auth: { token: socketToken }
+    });
+
 
     socket.on('connect', () => {
       // Register admin user as online
@@ -290,7 +302,17 @@ export default function AdminDashboard() {
       setTimeout(() => setLiveNotification(null), 4000);
     }
   };
-
+const handleToggleBlock = async (userId, currentStatus) => {
+    try {
+      await axios.patch(`${API_BASE_URL}/api/admin/users/${userId}/status`, { isBlocked: !currentStatus }, authHeader);
+      setLiveNotification(`✅ User ${currentStatus ? 'unblocked' : 'blocked'} successfully`);
+      fetchAdminData();
+    } catch (err) {
+      setLiveNotification('❌ Error updating block status');
+    } finally {
+      setTimeout(() => setLiveNotification(null), 4000);
+    }
+  };
   const executeDeleteUser = async () => {
     if (!deleteConfirmUser) return;
     try {
@@ -305,7 +327,19 @@ export default function AdminDashboard() {
       setTimeout(() => setLiveNotification(null), 4000);
     }
   };
-
+const handleBroadcast = async (e) => {
+    e.preventDefault();
+    if (!broadcastMessage.trim()) return;
+    try {
+      const res = await axios.post(`${API_BASE_URL}/api/admin/broadcast`, { audience: broadcastAudience, message: broadcastMessage }, authHeader);
+      setLiveNotification(`📢 ${res.data.message}`);
+      setBroadcastMessage('');
+    } catch (err) {
+      setLiveNotification(`❌ Error: ${err.response?.data?.message || 'Failed to send broadcast'}`);
+    } finally {
+      setTimeout(() => setLiveNotification(null), 4000);
+    }
+  };
   return (
     <div className="max-w-7xl mx-auto p-6 text-white relative space-y-6 font-sans">
       {/* ⚡ Real-Time Notification Toast */}
@@ -567,6 +601,12 @@ export default function AdminDashboard() {
                             </button>
                           )}
                           <button
+                            onClick={() => handleToggleBlock(u._id, u.isBlocked)}
+                            className={`${u.isBlocked ? 'bg-green-600 hover:bg-green-500' : 'bg-orange-700 hover:bg-orange-600'} px-3 py-1.5 rounded-lg text-white font-bold transition`}
+                          >
+                            {u.isBlocked ? 'Unblock' : 'Block'}
+                          </button>
+                          <button
                             onClick={() => setResetPassUser(u)}
                             className="bg-amber-600/80 hover:bg-amber-600 px-3 py-1.5 rounded-lg text-white font-bold transition"
                           >
@@ -770,27 +810,21 @@ export default function AdminDashboard() {
                     <span className="text-xs text-gray-400 font-mono">Map View</span>
                   </div>
                   <div className="flex-1 bg-neutral-900/50 relative overflow-hidden flex items-center justify-center">
-                    {/* Decorative grid background for map placeholder */}
-                    <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#4b5563 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
-                    <div className="z-10 text-center space-y-4">
-                      <div className="w-16 h-16 mx-auto rounded-full bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
-                        <span className="text-2xl">🗺️</span>
-                      </div>
-                      <p className="text-sm text-gray-300 max-w-[250px] mx-auto">Watch the entire minibus network in real-time. (Map Integration Required)</p>
-                    </div>
-                  </div>
-                </div>
+                      <LiveFleetMap />
 
                 {/* Notification Management */}
                 <div className="glass-card border border-white/10 rounded-2xl p-6 shadow-xl flex flex-col">
                   <h3 className="text-sm font-bold text-white mb-4">Broadcast Notification</h3>
-                  <form className="space-y-4 flex-1 flex flex-col" onSubmit={(e) => { e.preventDefault(); setLiveNotification('📢 Broadcast sent successfully!'); setTimeout(()=>setLiveNotification(null),3000); }}>
+                  <form className="space-y-4 flex-1 flex flex-col" onSubmit={handleBroadcast}>
                     <div>
                       <label className="text-[11px] text-gray-400 uppercase tracking-wider mb-1 block">Target Audience</label>
-                      <select className="w-full glass-panel border border-white/10 rounded-xl p-3 text-sm outline-none text-white">
-                        <option value="all">All Users</option>
-                        <option value="drivers">Online Drivers Only</option>
-                        <option value="passengers">All Passengers</option>
+<select 
+                        className="w-full glass-panel border border-white/10 rounded-xl p-3 text-sm outline-none text-white"
+                        value={broadcastAudience}
+                        onChange={(e) => setBroadcastAudience(e.target.value)}
+                      >                        <option value="all">All Users</option>
+                        <option value="drivers">Drivers Only</option>
+                        <option value="passengers">Passengers Only</option>
                       </select>
                     </div>
                     <div>
@@ -798,6 +832,8 @@ export default function AdminDashboard() {
                       <textarea 
                         className="w-full glass-panel border border-white/10 rounded-xl p-3 text-sm outline-none text-white h-24 resize-none focus:border-blue-500" 
                         placeholder="Enter system alert, promo code, or broadcast message..."
+                        value={broadcastMessage}
+                        onChange={(e) => setBroadcastMessage(e.target.value)}
                       ></textarea>
                     </div>
                     <div className="mt-auto pt-4">
@@ -831,7 +867,7 @@ export default function AdminDashboard() {
                       <td className="p-4 text-gray-300">{log.performedBy?.name || 'System'}</td>
                       <td className="p-4 text-gray-300">{log.targetUser?.name || '—'}</td>
                       <td className="p-4 text-gray-400">{log.details}</td>
-                      <td className="p-4 font-mono text-[11px] text-gray-500">{new Date(log.timestamp).toLocaleString()}</td>
+                      <td className="p-4 font-mono text-[11px] text-gray-500">{new Date(log.createdAt).toLocaleString()}</td>
                     </tr>
                   ))}
                 </tbody>
