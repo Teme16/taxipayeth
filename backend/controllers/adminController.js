@@ -9,6 +9,7 @@ const Transaction = require('../models/Transaction');
 const Trip = require('../models/Trip');
 const Route = require('../models/Route');
 const SystemLog = require('../models/SystemLog');
+const Zone = require('../models/Zone');
 
 const asyncHandler = require('../utils/asyncHandler');
 
@@ -403,6 +404,7 @@ exports.listTransactions = asyncHandler(async (req, res) => {
         Transaction.find(filter)
             .populate('user', 'name phone')
             .populate('driver', 'name phone')
+            .populate({ path: 'trip', populate: { path: 'route', select: 'name origin destination' } })
             .sort({ createdAt: -1 })
             .skip((pageNum - 1) * limitNum)
             .limit(limitNum)
@@ -602,6 +604,61 @@ exports.deleteRoute = asyncHandler(async (req, res) => {
         success: true,
         message: 'Route deleted successfully.'
     });
+});
+
+/* =========================================================
+   ZONES (GEO-FENCING) MANAGEMENT
+========================================================= */
+
+/**
+ * GET /api/admin/zones
+ */
+exports.listZones = asyncHandler(async (req, res) => {
+    const zones = await Zone.find().sort({ createdAt: -1 }).lean();
+    return res.status(200).json({ success: true, zones });
+});
+
+/**
+ * POST /api/admin/zones
+ */
+exports.createZone = asyncHandler(async (req, res) => {
+    const { name, description, isActive, area } = req.body;
+    
+    if (!area || area.type !== 'Polygon' || !Array.isArray(area.coordinates)) {
+        throw createHttpError(400, 'Invalid GeoJSON Polygon for area.');
+    }
+
+    const zone = await Zone.create({ name, description, isActive, area });
+    
+    await SystemLog.logEvent({
+        action: 'admin_create_zone',
+        level: 'info',
+        performedBy: req.user._id,
+        details: `Created zone: ${zone.name}.`,
+        req
+    });
+
+    return res.status(201).json({ success: true, zone });
+});
+
+/**
+ * DELETE /api/admin/zones/:id
+ */
+exports.deleteZone = asyncHandler(async (req, res) => {
+    assertValidObjectId(req.params.id, 'Zone');
+    const zone = await Zone.findByIdAndDelete(req.params.id);
+    
+    if (!zone) throw createHttpError(404, 'Zone not found.');
+
+    await SystemLog.logEvent({
+        action: 'admin_delete_zone',
+        level: 'info',
+        performedBy: req.user._id,
+        details: `Deleted zone: ${zone.name}.`,
+        req
+    });
+
+    return res.status(200).json({ success: true, message: 'Zone deleted.' });
 });
 
 /* =========================================================
@@ -831,5 +888,56 @@ exports.listLogs = asyncHandler(async (req, res) => {
             total,
             pages: Math.ceil(total / limitNum)
         }
+    });
+});
+/**
+ * POST /api/admin/broadcast
+ */
+exports.broadcast = asyncHandler(async (req, res) => {
+    const { audience, message } = req.body;
+
+    if (!message || message.trim().length === 0) {
+        throw createHttpError(400, 'Message cannot be empty.');
+    }
+
+    const { bot } = require('../config/telegram');
+    if (!bot) {
+        throw createHttpError(500, 'Telegram bot is not configured.');
+    }
+
+    let filter = { telegramChatId: { $exists: true, $ne: null } };
+    if (audience === 'drivers') {
+        filter.role = 'driver';
+    } else if (audience === 'passengers') {
+        filter.role = 'passenger';
+    }
+
+    const users = await User.find(filter).select('telegramChatId name');
+    
+    let sentCount = 0;
+    for (const user of users) {
+        try {
+            await bot.sendMessage(user.telegramChatId, message, {
+                parse_mode: 'Markdown',
+                disable_web_page_preview: true
+            });
+            sentCount++;
+        } catch (err) {
+            console.error(`Failed to send broadcast to ${user.name}:`, err.message);
+        }
+    }
+
+    await SystemLog.logEvent({
+        action: 'admin_broadcast_message',
+        level: 'info',
+        performedBy: req.user._id,
+        details: `Broadcast sent to ${sentCount} ${audience}. Message: ${message.substring(0, 50)}...`,
+        req
+    });
+
+    return res.status(200).json({
+        success: true,
+        message: `Broadcast sent to ${sentCount} users.`,
+        sentCount
     });
 });
