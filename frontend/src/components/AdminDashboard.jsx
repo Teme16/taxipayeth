@@ -874,9 +874,9 @@ const handleBroadcast = async (e) => {
               </table>
             </div>
             
-          )}</div>
-        </div>
-      )}
+          )}
+        
+       
 
       {/* User Info & Document Preview Modal */}
       {selectedUser && (
