@@ -40,7 +40,7 @@ export default function AdminDashboard() {
   const [resetPassUser, setResetPassUser] = useState(null);
   const [newPasswordInput, setNewPasswordInput] = useState('');
   const [deleteConfirmUser, setDeleteConfirmUser] = useState(null);
-// Broadcast States
+  // Broadcast States
   const [broadcastAudience, setBroadcastAudience] = useState('all');
   const [broadcastMessage, setBroadcastMessage] = useState('');
 
@@ -302,7 +302,7 @@ export default function AdminDashboard() {
       setTimeout(() => setLiveNotification(null), 4000);
     }
   };
-const handleToggleBlock = async (userId, currentStatus) => {
+  const handleToggleBlock = async (userId, currentStatus) => {
     try {
       await axios.patch(`${API_BASE_URL}/api/admin/users/${userId}/status`, { isBlocked: !currentStatus }, authHeader);
       setLiveNotification(`✅ User ${currentStatus ? 'unblocked' : 'blocked'} successfully`);
@@ -327,7 +327,7 @@ const handleToggleBlock = async (userId, currentStatus) => {
       setTimeout(() => setLiveNotification(null), 4000);
     }
   };
-const handleBroadcast = async (e) => {
+  const handleBroadcast = async (e) => {
     e.preventDefault();
     if (!broadcastMessage.trim()) return;
     try {
@@ -375,11 +375,10 @@ const handleBroadcast = async (e) => {
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 rounded-2xl text-xs font-bold transition ${
-                activeTab === tab.id
+              className={`px-4 py-2 rounded-2xl text-xs font-bold transition ${activeTab === tab.id
                   ? 'bg-blue-500 text-white border border-blue-400 shadow-md'
                   : 'glass-panel text-gray-300 border border-white/10 hover:glass-card hover:text-white'
-              }`}
+                }`}
             >
               {tab.label}
             </button>
@@ -391,7 +390,7 @@ const handleBroadcast = async (e) => {
       </div>
 
       {/* Active Tab Content */}
-       {loading ? (
+      {loading ? (
         <div className="glass-card border border-white/10 rounded-2xl p-8 text-center text-sm text-gray-400">Loading data...</div>
       ) : (
         <div className="space-y-6">
@@ -430,18 +429,18 @@ const handleBroadcast = async (e) => {
                       </span>
                     </div>
                   </div>
-                  
+
                   <div className="h-56 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                         <defs>
                           <linearGradient id="driverGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#60A5FA" stopOpacity={0.4}/>
-                            <stop offset="95%" stopColor="#60A5FA" stopOpacity={0}/>
+                            <stop offset="5%" stopColor="#60A5FA" stopOpacity={0.4} />
+                            <stop offset="95%" stopColor="#60A5FA" stopOpacity={0} />
                           </linearGradient>
                           <linearGradient id="passengerGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#34D399" stopOpacity={0.4}/>
-                            <stop offset="95%" stopColor="#34D399" stopOpacity={0}/>
+                            <stop offset="5%" stopColor="#34D399" stopOpacity={0.4} />
+                            <stop offset="95%" stopColor="#34D399" stopOpacity={0} />
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
@@ -543,101 +542,100 @@ const handleBroadcast = async (e) => {
 
               <div className="glass-card border border-white/10 rounded-2xl overflow-hidden shadow-xl">
 
-              <table className="w-full text-left text-xs">
-                <thead className="glass-panel text-gray-400 uppercase font-bold border-b border-white/10">
-                  <tr>
-                    <th className="p-4">User Details</th>
-                    <th className="p-4">Role</th>
-                    <th className="p-4">Telegram ID</th>
-                    <th className="p-4">Approval Status</th>
-                    <th className="p-4">Blocked</th>
-                    <th className="p-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-800">
-                  {users.map((u) => {
-                    const online = isUserOnline(u);
-                    return (
-                      <tr key={u._id} className="hover:glass-panel/40 transition">
-                        <td className="p-4">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                                online ? 'bg-emerald-500 animate-ping' : 'bg-neutral-600'
-                              }`}
-                              title={online ? 'User is online' : 'Offline'}
-                            />
-                            <div className="font-bold text-sm text-white">{u.name}</div>
-                            {online && (
-                              <span className="text-[9px] bg-emerald-500/20 text-emerald-400 font-extrabold px-1.5 py-0.5 rounded border border-emerald-500/30 uppercase tracking-wide">
-                                ONLINE
-                              </span>
+                <table className="w-full text-left text-xs">
+                  <thead className="glass-panel text-gray-400 uppercase font-bold border-b border-white/10">
+                    <tr>
+                      <th className="p-4">User Details</th>
+                      <th className="p-4">Role</th>
+                      <th className="p-4">Telegram ID</th>
+                      <th className="p-4">Approval Status</th>
+                      <th className="p-4">Blocked</th>
+                      <th className="p-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-800">
+                    {users.map((u) => {
+                      const online = isUserOnline(u);
+                      return (
+                        <tr key={u._id} className="hover:glass-panel/40 transition">
+                          <td className="p-4">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`w-2.5 h-2.5 rounded-full shrink-0 ${online ? 'bg-emerald-500 animate-ping' : 'bg-neutral-600'
+                                  }`}
+                                title={online ? 'User is online' : 'Offline'}
+                              />
+                              <div className="font-bold text-sm text-white">{u.name}</div>
+                              {online && (
+                                <span className="text-[9px] bg-emerald-500/20 text-emerald-400 font-extrabold px-1.5 py-0.5 rounded border border-emerald-500/30 uppercase tracking-wide">
+                                  ONLINE
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-gray-400 font-mono text-xs mt-0.5">{u.phone}</div>
+                            {u.driverData?.targaNo && (
+                              <div className="text-[10px] text-blue-400 font-mono mt-0.5">Plate: {u.driverData.targaNo}</div>
                             )}
-                          </div>
-                          <div className="text-gray-400 font-mono text-xs mt-0.5">{u.phone}</div>
-                          {u.driverData?.targaNo && (
-                            <div className="text-[10px] text-blue-400 font-mono mt-0.5">Plate: {u.driverData.targaNo}</div>
-                          )}
-                        </td>
-                        <td className="p-4 capitalize font-semibold text-gray-300">{u.role}</td>
-                        <td className="p-4 font-mono text-gray-400">{u.telegramChatId || 'Not Linked'}</td>
-                        <td className="p-4 text-sm font-semibold text-gray-300">{u.approvalStatus || 'pending'}</td>
-                        <td className="p-4 text-sm font-semibold text-gray-300">{u.isBlocked ? 'Yes' : 'No'}</td>
-                        <td className="p-4 text-right space-x-2">
-                          {u.approvalStatus !== 'approved' && (
+                          </td>
+                          <td className="p-4 capitalize font-semibold text-gray-300">{u.role}</td>
+                          <td className="p-4 font-mono text-gray-400">{u.telegramChatId || 'Not Linked'}</td>
+                          <td className="p-4 text-sm font-semibold text-gray-300">{u.approvalStatus || 'pending'}</td>
+                          <td className="p-4 text-sm font-semibold text-gray-300">{u.isBlocked ? 'Yes' : 'No'}</td>
+                          <td className="p-4 text-right space-x-2">
+                            {u.approvalStatus !== 'approved' && (
+                              <button
+                                onClick={() => handleApproveStatus(u._id, 'approved')}
+                                className="glass-button hover:bg-emerald-500 px-3 py-1.5 rounded-lg text-white font-bold transition shadow"
+                              >
+                                Approve
+                              </button>
+                            )}
+                            {u.approvalStatus !== 'rejected' && (
+                              <button
+                                onClick={() => handleApproveStatus(u._id, 'rejected')}
+                                className="bg-red-600 hover:bg-red-500 px-3 py-1.5 rounded-lg text-white font-bold transition"
+                              >
+                                Reject
+                              </button>
+                            )}
                             <button
-                              onClick={() => handleApproveStatus(u._id, 'approved')}
-                              className="glass-button hover:bg-emerald-500 px-3 py-1.5 rounded-lg text-white font-bold transition shadow"
+                              onClick={() => handleToggleBlock(u._id, u.isBlocked)}
+                              className={`${u.isBlocked ? 'bg-green-600 hover:bg-green-500' : 'bg-orange-700 hover:bg-orange-600'} px-3 py-1.5 rounded-lg text-white font-bold transition`}
                             >
-                              Approve
+                              {u.isBlocked ? 'Unblock' : 'Block'}
                             </button>
-                          )}
-                          {u.approvalStatus !== 'rejected' && (
                             <button
-                              onClick={() => handleApproveStatus(u._id, 'rejected')}
-                              className="bg-red-600 hover:bg-red-500 px-3 py-1.5 rounded-lg text-white font-bold transition"
+                              onClick={() => setResetPassUser(u)}
+                              className="bg-amber-600/80 hover:bg-amber-600 px-3 py-1.5 rounded-lg text-white font-bold transition"
                             >
-                              Reject
+                              Reset Pass
                             </button>
-                          )}
-                          <button
-                            onClick={() => handleToggleBlock(u._id, u.isBlocked)}
-                            className={`${u.isBlocked ? 'bg-green-600 hover:bg-green-500' : 'bg-orange-700 hover:bg-orange-600'} px-3 py-1.5 rounded-lg text-white font-bold transition`}
-                          >
-                            {u.isBlocked ? 'Unblock' : 'Block'}
-                          </button>
-                          <button
-                            onClick={() => setResetPassUser(u)}
-                            className="bg-amber-600/80 hover:bg-amber-600 px-3 py-1.5 rounded-lg text-white font-bold transition"
-                          >
-                            Reset Pass
-                          </button>
-                          <button
-                            onClick={() => setSelectedUser(u)}
-                            className="glass-panel hover:bg-neutral-700 px-3 py-1.5 rounded-lg text-gray-300 transition"
-                          >
-                            View
-                          </button>
-                          <button
-                            onClick={() => setDeleteConfirmUser(u)}
-                            className="bg-red-600/80 hover:bg-red-600 px-3 py-1.5 rounded-lg text-white font-bold transition"
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                            <button
+                              onClick={() => setSelectedUser(u)}
+                              className="glass-panel hover:bg-neutral-700 px-3 py-1.5 rounded-lg text-gray-300 transition"
+                            >
+                              View
+                            </button>
+                            <button
+                              onClick={() => setDeleteConfirmUser(u)}
+                              className="bg-red-600/80 hover:bg-red-600 px-3 py-1.5 rounded-lg text-white font-bold transition"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
           {/* TAB 3: TARIFF & FINANCIAL CONTROL */}
           {activeTab === 'tariff' && (
             <div className="space-y-8 animate-fade-in">
-              
+
               {/* Configuration Section (Placeholder) */}
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="glass-card/90 border border-white/10 p-6 rounded-2xl shadow-xl">
@@ -669,90 +667,90 @@ const handleBroadcast = async (e) => {
 
               {/* Route & Tariff Form */}
               <div className="grid gap-6 lg:grid-cols-[1fr_1.8fr]">
-              <div className="glass-card border border-white/10 rounded-2xl p-5 shadow-xl">
-                <h3 className="text-sm uppercase tracking-widest text-gray-400 mb-4">{editingRoute ? 'Edit Route' : 'Create Route'}</h3>
-                <form onSubmit={submitRouteForm} className="space-y-4 text-xs">
-                  {[
-                    { label: 'Name', name: 'name', type: 'text' },
-                    { label: 'Origin', name: 'origin', type: 'text' },
-                    { label: 'Destination', name: 'destination', type: 'text' },
-                    { label: 'Base Fare', name: 'baseFare', type: 'number' },
-                    { label: 'Distance', name: 'distance', type: 'number' }
-                  ].map((field) => (
-                    <label key={field.name} className="block">
-                      <span className="text-gray-400 text-[11px] mb-1 block">{field.label}</span>
-                      <input
-                        type={field.type}
-                        value={routeForm[field.name]}
-                        onChange={(e) => setRouteForm((prev) => ({ ...prev, [field.name]: e.target.value }))}
-                        className="w-full glass-panel border border-white/10 rounded-2xl p-3 text-sm text-white outline-none focus:border-blue-500"
-                      />
-                    </label>
-                  ))}
-                  <label className="flex items-center gap-3 text-sm text-gray-300">
-                    <input
-                      type="checkbox"
-                      checked={routeForm.isActive}
-                      onChange={(e) => setRouteForm((prev) => ({ ...prev, isActive: e.target.checked }))}
-                      className="h-4 w-4 rounded border-white/20 glass-card text-blue-500"
-                    />
-                    Mark route active
-                  </label>
-                  <div className="flex gap-2">
-                    <button type="submit" className="flex-1 glass-button-primary hover:bg-blue-500 py-3 rounded-2xl text-white text-sm font-bold transition">
-                      {editingRoute ? 'Update Route' : 'Create Route'}
-                    </button>
-                    {editingRoute && (
-                      <button
-                        type="button"
-                        onClick={resetRouteForm}
-                        className="px-5 glass-panel hover:bg-neutral-700 py-3 rounded-2xl text-sm text-gray-300 transition"
-                      >
-                        Cancel
-                      </button>
-                    )}
-                  </div>
-                </form>
-              </div>
-              <div className="glass-card border border-white/10 rounded-2xl overflow-hidden shadow-xl">
-                <table className="w-full text-left text-xs">
-                  <thead className="glass-panel text-gray-400 uppercase font-bold border-b border-white/10">
-                    <tr>
-                      <th className="p-4">Route</th>
-                      <th className="p-4">Base Fare</th>
-                      <th className="p-4">Distance</th>
-                      <th className="p-4">Status</th>
-                      <th className="p-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-800">
-                    {routes.map((route) => (
-                      <tr key={route._id} className="hover:glass-panel/40 transition">
-                        <td className="p-4 text-gray-300">{route.name} — {route.origin} → {route.destination}</td>
-                        <td className="p-4 text-gray-300">{route.baseFare.toFixed(2)}</td>
-                        <td className="p-4 text-gray-300">{route.distance}</td>
-                        <td className="p-4 capitalize text-gray-300">{route.isActive ? 'active' : 'inactive'}</td>
-                        <td className="p-4 text-right space-x-2">
-                          <button
-                            onClick={() => handleEditRoute(route)}
-                            className="glass-button-primary hover:bg-blue-500 px-3 py-1.5 rounded-lg text-white text-[11px] font-bold transition"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteRoute(route._id)}
-                            className="bg-red-600 hover:bg-red-500 px-3 py-1.5 rounded-lg text-white text-[11px] font-bold transition"
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
+                <div className="glass-card border border-white/10 rounded-2xl p-5 shadow-xl">
+                  <h3 className="text-sm uppercase tracking-widest text-gray-400 mb-4">{editingRoute ? 'Edit Route' : 'Create Route'}</h3>
+                  <form onSubmit={submitRouteForm} className="space-y-4 text-xs">
+                    {[
+                      { label: 'Name', name: 'name', type: 'text' },
+                      { label: 'Origin', name: 'origin', type: 'text' },
+                      { label: 'Destination', name: 'destination', type: 'text' },
+                      { label: 'Base Fare', name: 'baseFare', type: 'number' },
+                      { label: 'Distance', name: 'distance', type: 'number' }
+                    ].map((field) => (
+                      <label key={field.name} className="block">
+                        <span className="text-gray-400 text-[11px] mb-1 block">{field.label}</span>
+                        <input
+                          type={field.type}
+                          value={routeForm[field.name]}
+                          onChange={(e) => setRouteForm((prev) => ({ ...prev, [field.name]: e.target.value }))}
+                          className="w-full glass-panel border border-white/10 rounded-2xl p-3 text-sm text-white outline-none focus:border-blue-500"
+                        />
+                      </label>
                     ))}
-                  </tbody>
-                </table>
+                    <label className="flex items-center gap-3 text-sm text-gray-300">
+                      <input
+                        type="checkbox"
+                        checked={routeForm.isActive}
+                        onChange={(e) => setRouteForm((prev) => ({ ...prev, isActive: e.target.checked }))}
+                        className="h-4 w-4 rounded border-white/20 glass-card text-blue-500"
+                      />
+                      Mark route active
+                    </label>
+                    <div className="flex gap-2">
+                      <button type="submit" className="flex-1 glass-button-primary hover:bg-blue-500 py-3 rounded-2xl text-white text-sm font-bold transition">
+                        {editingRoute ? 'Update Route' : 'Create Route'}
+                      </button>
+                      {editingRoute && (
+                        <button
+                          type="button"
+                          onClick={resetRouteForm}
+                          className="px-5 glass-panel hover:bg-neutral-700 py-3 rounded-2xl text-sm text-gray-300 transition"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </div>
+                  </form>
+                </div>
+                <div className="glass-card border border-white/10 rounded-2xl overflow-hidden shadow-xl">
+                  <table className="w-full text-left text-xs">
+                    <thead className="glass-panel text-gray-400 uppercase font-bold border-b border-white/10">
+                      <tr>
+                        <th className="p-4">Route</th>
+                        <th className="p-4">Base Fare</th>
+                        <th className="p-4">Distance</th>
+                        <th className="p-4">Status</th>
+                        <th className="p-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-800">
+                      {routes.map((route) => (
+                        <tr key={route._id} className="hover:glass-panel/40 transition">
+                          <td className="p-4 text-gray-300">{route.name} — {route.origin} → {route.destination}</td>
+                          <td className="p-4 text-gray-300">{route.baseFare.toFixed(2)}</td>
+                          <td className="p-4 text-gray-300">{route.distance}</td>
+                          <td className="p-4 capitalize text-gray-300">{route.isActive ? 'active' : 'inactive'}</td>
+                          <td className="p-4 text-right space-x-2">
+                            <button
+                              onClick={() => handleEditRoute(route)}
+                              className="glass-button-primary hover:bg-blue-500 px-3 py-1.5 rounded-lg text-white text-[11px] font-bold transition"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteRoute(route._id)}
+                              className="bg-red-600 hover:bg-red-500 px-3 py-1.5 rounded-lg text-white text-[11px] font-bold transition"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
-              
+
               {/* Transactions Table */}
               <div className="glass-card border border-white/10 rounded-2xl overflow-hidden shadow-xl">
                 <div className="p-5 border-b border-white/10 bg-black/20">
@@ -796,10 +794,10 @@ const handleBroadcast = async (e) => {
           )}
 
           {/* TAB 4: FLEET MONITORING & COMMUNICATIONS */}
-          {activeTab === 'fleet' && (
+          {activeTab === 'fleet' ? (
             <div className="space-y-6 animate-fade-in">
               <div className="grid md:grid-cols-[1.5fr_1fr] gap-6">
-                
+
                 {/* Live Fleet Tracking Map Placeholder */}
                 <div className="glass-card border border-white/10 rounded-2xl overflow-hidden shadow-xl flex flex-col h-[400px]">
                   <div className="p-4 border-b border-white/10 bg-black/20 flex justify-between items-center">
@@ -820,7 +818,7 @@ const handleBroadcast = async (e) => {
                   <form className="space-y-4 flex-1 flex flex-col" onSubmit={handleBroadcast}>
                     <div>
                       <label className="text-[11px] text-gray-400 uppercase tracking-wider mb-1 block">Target Audience</label>
-                      <select 
+                      <select
                         className="w-full glass-panel border border-white/10 rounded-xl p-3 text-sm outline-none text-white"
                         value={broadcastAudience}
                         onChange={(e) => setBroadcastAudience(e.target.value)}
@@ -832,8 +830,8 @@ const handleBroadcast = async (e) => {
                     </div>
                     <div>
                       <label className="text-[11px] text-gray-400 uppercase tracking-wider mb-1 block">Message</label>
-                      <textarea 
-                        className="w-full glass-panel border border-white/10 rounded-xl p-3 text-sm outline-none text-white h-24 resize-none focus:border-blue-500" 
+                      <textarea
+                        className="w-full glass-panel border border-white/10 rounded-xl p-3 text-sm outline-none text-white h-24 resize-none focus:border-blue-500"
                         placeholder="Enter system alert, promo code, or broadcast message..."
                         value={broadcastMessage}
                         onChange={(e) => setBroadcastMessage(e.target.value)}
@@ -853,31 +851,31 @@ const handleBroadcast = async (e) => {
                 <div className="p-4 border-b border-white/10 bg-black/20 flex justify-between items-center">
                   <h3 className="text-sm font-bold text-white">Security & Access Trails</h3>
                 </div>
-              <table className="w-full text-left text-xs">
-                <thead className="glass-panel text-gray-400 uppercase font-bold border-b border-white/10">
-                  <tr>
-                    <th className="p-4">Action</th>
-                    <th className="p-4">Performed By</th>
-                    <th className="p-4">Target</th>
-                    <th className="p-4">Details</th>
-                    <th className="p-4">Timestamp</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-800">
-                  {logs.map((log) => (
-                    <tr key={log._id} className="hover:glass-panel/40 transition">
-                      <td className="p-4 font-semibold text-white">{log.action}</td>
-                      <td className="p-4 text-gray-300">{log.performedBy?.name || 'System'}</td>
-                      <td className="p-4 text-gray-300">{log.targetUser?.name || '—'}</td>
-                      <td className="p-4 text-gray-400">{log.details}</td>
-                      <td className="p-4 font-mono text-[11px] text-gray-500">{new Date(log.createdAt).toLocaleString()}</td>
+                <table className="w-full text-left text-xs">
+                  <thead className="glass-panel text-gray-400 uppercase font-bold border-b border-white/10">
+                    <tr>
+                      <th className="p-4">Action</th>
+                      <th className="p-4">Performed By</th>
+                      <th className="p-4">Target</th>
+                      <th className="p-4">Details</th>
+                      <th className="p-4">Timestamp</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-800">
+                    {logs.map((log) => (
+                      <tr key={log._id} className="hover:glass-panel/40 transition">
+                        <td className="p-4 font-semibold text-white">{log.action}</td>
+                        <td className="p-4 text-gray-300">{log.performedBy?.name || 'System'}</td>
+                        <td className="p-4 text-gray-300">{log.targetUser?.name || '—'}</td>
+                        <td className="p-4 text-gray-400">{log.details}</td>
+                        <td className="p-4 font-mono text-[11px] text-gray-500">{new Date(log.createdAt).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-            </div>
-          )}
+          ) : null}
         </div>
       )}
 
@@ -894,9 +892,8 @@ const handleBroadcast = async (e) => {
                   </span>
                 )}
               </div>
-              <span className={`text-xs px-2.5 py-1 rounded-full font-mono font-bold uppercase border ${
-                selectedUser.approvalStatus === 'approved' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-              }`}>
+              <span className={`text-xs px-2.5 py-1 rounded-full font-mono font-bold uppercase border ${selectedUser.approvalStatus === 'approved' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                }`}>
                 {selectedUser.approvalStatus || 'pending'}
               </span>
             </div>
