@@ -391,7 +391,7 @@ const handleBroadcast = async (e) => {
       </div>
 
       {/* Active Tab Content */}
-      {loading ? (
+       {loading ? (
         <div className="glass-card border border-white/10 rounded-2xl p-8 text-center text-sm text-gray-400">Loading data...</div>
       ) : (
         <div className="space-y-6">
@@ -810,10 +810,76 @@ const handleBroadcast = async (e) => {
                     <span className="text-xs text-gray-400 font-mono">Map View</span>
                   </div>
                   <div className="flex-1 bg-neutral-900/50 relative overflow-hidden flex items-center justify-center">
-                      <LiveFleetMap />
-                  </div> {/* <-- FIX: Added missing closing div for map wrapper */}
-                </div> {/* <-- FIX: Added missing closing div for map card */}
+                    <LiveFleetMap />
+                  </div>
+                </div>
 
+                {/* Notification Management */}
+                <div className="glass-card border border-white/10 rounded-2xl p-6 shadow-xl flex flex-col">
+                  <h3 className="text-sm font-bold text-white mb-4">Broadcast Notification</h3>
+                  <form className="space-y-4 flex-1 flex flex-col" onSubmit={handleBroadcast}>
+                    <div>
+                      <label className="text-[11px] text-gray-400 uppercase tracking-wider mb-1 block">Target Audience</label>
+                      <select 
+                        className="w-full glass-panel border border-white/10 rounded-xl p-3 text-sm outline-none text-white"
+                        value={broadcastAudience}
+                        onChange={(e) => setBroadcastAudience(e.target.value)}
+                      >
+                        <option value="all">All Users</option>
+                        <option value="drivers">Drivers Only</option>
+                        <option value="passengers">Passengers Only</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[11px] text-gray-400 uppercase tracking-wider mb-1 block">Message</label>
+                      <textarea 
+                        className="w-full glass-panel border border-white/10 rounded-xl p-3 text-sm outline-none text-white h-24 resize-none focus:border-blue-500" 
+                        placeholder="Enter system alert, promo code, or broadcast message..."
+                        value={broadcastMessage}
+                        onChange={(e) => setBroadcastMessage(e.target.value)}
+                      ></textarea>
+                    </div>
+                    <div className="mt-auto pt-4">
+                      <button type="submit" className="w-full glass-button-primary hover:bg-blue-500 py-3 rounded-xl text-white font-bold transition">
+                        Send Broadcast
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+              {/* System Security & Access Logs */}
+              <div className="glass-card border border-white/10 rounded-2xl overflow-hidden shadow-xl">
+                <div className="p-4 border-b border-white/10 bg-black/20 flex justify-between items-center">
+                  <h3 className="text-sm font-bold text-white">Security & Access Trails</h3>
+                </div>
+              <table className="w-full text-left text-xs">
+                <thead className="glass-panel text-gray-400 uppercase font-bold border-b border-white/10">
+                  <tr>
+                    <th className="p-4">Action</th>
+                    <th className="p-4">Performed By</th>
+                    <th className="p-4">Target</th>
+                    <th className="p-4">Details</th>
+                    <th className="p-4">Timestamp</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-800">
+                  {logs.map((log) => (
+                    <tr key={log._id} className="hover:glass-panel/40 transition">
+                      <td className="p-4 font-semibold text-white">{log.action}</td>
+                      <td className="p-4 text-gray-300">{log.performedBy?.name || 'System'}</td>
+                      <td className="p-4 text-gray-300">{log.targetUser?.name || '—'}</td>
+                      <td className="p-4 text-gray-400">{log.details}</td>
+                      <td className="p-4 font-mono text-[11px] text-gray-500">{new Date(log.createdAt).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            </div>
+          )}
+        </div>
+      )}
                 {/* Notification Management */}
                 <div className="glass-card border border-white/10 rounded-2xl p-6 shadow-xl flex flex-col">
                   <h3 className="text-sm font-bold text-white mb-4">Broadcast Notification</h3>
