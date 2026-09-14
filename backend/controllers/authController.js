@@ -63,21 +63,18 @@ const sanitizeUser = (user) => {
 exports.requestTelegramVerification = asyncHandler(async (req, res) => {
     const phone = normalizePhone(req.body.phone);
 
-    const existingUser = await User.findOne({ phone }).lean();
+   const existingUser = await User.findOne({ phone }).lean();
 
-   const existingUser = await User.findOne({ phone });
-
-  if (existingUser) {
-    // FIX: Automatically delete the duplicate account if it hasn't been approved yet (great for testing)
-    if (existingUser.approvalStatus === 'pending') {
-      await User.deleteOne({ phone });
-    } else {
-      return res.status(409).json({
-        success: false,
-        message: 'An account already exists for this phone number.'
-      });
-    }
-  }
+      if (existingUser) {
+        if (existingUser.approvalStatus === 'pending') {
+          await User.deleteOne({ phone });
+        } else {
+          return res.status(409).json({
+            success: false,
+            message: 'An account already exists for this phone number.'
+          });
+        }
+      }
 
     const code = generateCode();
     const codeHash = await bcrypt.hash(code, 12);
@@ -236,19 +233,19 @@ exports.register =
      const duplicateQuery = { $or: [{ phone: normalizedPhone }] };
   if (normalizedEmail) duplicateQuery.$or.push({ email: normalizedEmail });
 
+ 
   const existingUser = await User.findOne(duplicateQuery);
-  
-  if (existingUser) {
-    // FIX: Automatically delete the duplicate if it's a pending test account
-    if (existingUser.approvalStatus === 'pending') {
-      await User.deleteOne({ _id: existingUser._id });
-    } else {
-      return res.status(409).json({
-        success: false,
-        message: 'An account with these details already exists.'
-      });
-    }
-  }
+      
+      if (existingUser) {
+        if (existingUser.approvalStatus === 'pending') {
+          await User.deleteOne({ _id: existingUser._id });
+        } else {
+          return res.status(409).json({
+            success: false,
+            message: 'An account with these details already exists.'
+          });
+        }
+      }
 
       const user =
         await User.create({
