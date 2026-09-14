@@ -17,6 +17,7 @@ const carIcon = new L.Icon({
   popupAnchor: [0, -16]
 });
 
+
 export default function LiveFleetMap() {
   const [driverLocations, setDriverLocations] = useState({});
   const [zones, setZones] = useState([]);
