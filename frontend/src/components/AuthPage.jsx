@@ -108,14 +108,10 @@ export default function AuthPage() {
     setError('');
     setSuccessMsg('');
 
-    const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-
-    // Explicit Payload Mapping
+    
     const payload = isLogin
-      ? {
-        phone: formData.phone.trim(),
-        password: formData.password
-      }
+            ? { phone: formData.phone.trim(), password: formData.password }
+
       : {
         name: formData.name.trim(),
         phone: formData.phone.trim(),
@@ -123,22 +119,24 @@ export default function AuthPage() {
         role,
         targaNo: role === 'driver' ? formData.targaNo.trim() : undefined,
         code: formData.code.trim(),
-        verificationCode: formData.code.trim() // Required by backend authController
+        verificationCode: formData.code.trim()
       };
 
-    console.log('📤 [Auth] Submitting', isLogin ? 'login' : 'registration', 'payload:', payload);
 
     try {
       if (isLogin) {
         await login(payload);
       } else {
         await register(payload);
+       // SWITCH TO LOGIN SCREEN INSTEAD OF AUTO-LOGGING IN
+        setIsLogin(true);
+        setOtpStep('idle');
+        setFormData({ ...formData, password: '', code: '' });
+        setSuccessMsg('Registration successful! Please check Telegram for your account status.');
       }
-      console.log('✅ [Auth] Success!');
     } catch (err) {
-      const errorMsg = err.message || 'Authentication failed.';
-      console.error('❌ [Auth] Error:', errorMsg);
-      setError(errorMsg);
+            setError(err.message || 'Authentication failed.');
+
     } finally {
       setLoading(false);
     }
