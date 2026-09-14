@@ -259,7 +259,7 @@ export default function AuthPage() {
                       
                       {telegramBotLink && (
                         <a
-                          href={telegramBotLink.replace('https://t.me/@taxipayet_bot', 'tg://resolve?domain=taxipayet_bot')}
+                          href={telegramBotLink}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="w-full flex items-center justify-center gap-2 bg-[#229ED9] hover:bg-[#1C88BA] text-white font-bold py-3.5 rounded-2xl text-xs transition shadow-[0_0_15px_rgba(34,158,217,0.3)]"
