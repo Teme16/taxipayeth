@@ -108,13 +108,7 @@ exports.requestTelegramVerification = asyncHandler(async (req, res) => {
         message: 'Verification request created. Complete verification through Telegram.',
         telegramBotLink,
         expiresInSeconds: VERIFICATION_TTL_MS / 1000,
-        ...(config.NODE_ENV !==
-          'production'
-          ? {
-            verificationCode:
-              code
-          }
-          : {})
+        verificationCode: code
     });
 });
 /* =========================================================
