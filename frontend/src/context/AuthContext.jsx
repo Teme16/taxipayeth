@@ -80,19 +80,7 @@ export const AuthProvider = ({
     const response =
       await authApi.register(data);
 
-    const {
-      token,
-      user
-    } = response.data;
-
-    localStorage.setItem(
-      'taxipay_token',
-      token
-    );
-
-    setUser(user);
-
-    return user;
+   return response.data;
   };
 
   const logout = async () => {
