@@ -376,8 +376,8 @@ export default function AdminDashboard() {
               type="button"
               onClick={() => setActiveTab(tab.id)}
               className={`px-4 py-2 rounded-2xl text-xs font-bold transition ${activeTab === tab.id
-                  ? 'bg-blue-500 text-white border border-blue-400 shadow-md'
-                  : 'glass-panel text-gray-300 border border-white/10 hover:glass-card hover:text-white'
+                ? 'bg-blue-500 text-white border border-blue-400 shadow-md'
+                : 'glass-panel text-gray-300 border border-white/10 hover:glass-card hover:text-white'
                 }`}
             >
               {tab.label}
@@ -491,7 +491,7 @@ export default function AdminDashboard() {
                         <td className="p-4 text-gray-400">{trip.route?.name || `${trip.route?.origin || '—'} → ${trip.route?.destination || '—'}`}</td>
                         <td className="p-4 text-emerald-400 font-semibold">{trip.fare?.toFixed(2) || '0.00'}</td>
                         <td className="p-4 capitalize text-gray-300">{trip.status}</td>
-                        <td className="p-4 font-mono text-[11px] text-gray-500">{new Date(trip.startTime).toLocaleString()}</td>
+                        <td className="p-4 font-mono text-[11px] text-gray-500">{trip.startTime ? new Date(trip.startTime).toLocaleString() : '—'}</td>
                         <td className="p-4 font-mono text-[11px] text-gray-500">{trip.endTime ? new Date(trip.endTime).toLocaleString() : '—'}</td>
                       </tr>
                     ))}
@@ -540,6 +540,59 @@ export default function AdminDashboard() {
                 </select>
               </div>
 
+              {/* PENDING APPROVALS QUEUE */}
+              {users.filter(u => u.approvalStatus === 'pending').length > 0 && (
+                <div className="glass-card border border-amber-500/30 rounded-2xl overflow-hidden shadow-[0_0_15px_-3px_rgba(245,158,11,0.2)] mb-8">
+                  <div className="bg-amber-500/10 p-4 border-b border-amber-500/20 flex items-center justify-between">
+                    <h3 className="text-amber-400 font-bold text-sm uppercase tracking-wider">Pending Approvals Queue</h3>
+                    <span className="bg-amber-500 text-neutral-950 font-black px-2 py-0.5 rounded-full text-xs">
+                      {users.filter(u => u.approvalStatus === 'pending').length}
+                    </span>
+                  </div>
+                  <table className="w-full text-left text-xs">
+                    <thead className="glass-panel text-gray-400 uppercase font-bold border-b border-white/10">
+                      <tr>
+                        <th className="p-4">User Details</th>
+                        <th className="p-4">Role</th>
+                        <th className="p-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-800">
+                      {users.filter(u => u.approvalStatus === 'pending').map((u) => (
+                        <tr key={u._id} className="hover:glass-panel/40 transition">
+                          <td className="p-4">
+                            <div className="font-bold text-sm text-white">{u.name}</div>
+                            <div className="text-gray-400 font-mono text-xs">{u.phone}</div>
+                          </td>
+                          <td className="p-4 capitalize font-semibold text-gray-300">{u.role}</td>
+                          <td className="p-4 text-right space-x-2">
+                            <button
+                              onClick={() => handleApproveStatus(u._id, 'approved')}
+                              className="bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded-lg text-white font-bold transition"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => handleApproveStatus(u._id, 'rejected')}
+                              className="bg-red-600 hover:bg-red-500 px-3 py-1.5 rounded-lg text-white font-bold transition"
+                            >
+                              Reject
+                            </button>
+                            <button
+                              onClick={() => setSelectedUser(u)}
+                              className="glass-panel hover:bg-neutral-700 px-3 py-1.5 rounded-lg text-gray-300 transition"
+                            >
+                              Review
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <h3 className="text-sm font-bold text-white mb-2 uppercase tracking-wide">All Users</h3>
               <div className="glass-card border border-white/10 rounded-2xl overflow-hidden shadow-xl">
 
                 <table className="w-full text-left text-xs">
@@ -772,14 +825,14 @@ export default function AdminDashboard() {
                   <tbody className="divide-y divide-neutral-800">
                     {transactions.map((tx) => (
                       <tr key={tx._id} className="hover:glass-panel/40 transition">
-                        <td className="p-4 font-mono text-gray-300">{tx.reference}</td>
-                        <td className="p-4 font-semibold text-white">{tx.amount.toFixed(2)}</td>
+                        <td className="p-4 font-mono text-gray-300">{tx.transactionId || tx._id}</td>
+                        <td className="p-4 font-semibold text-white">{tx.amount?.toFixed(2) || '0.00'}</td>
                         <td className="p-4 capitalize text-gray-300">{tx.type}</td>
                         <td className="p-4 capitalize text-sm font-bold text-gray-200">{tx.status}</td>
                         <td className="p-4 text-gray-400">{tx.user?.name || tx.metadata?.passengerName || '—'}</td>
-                        <td className="p-4 text-gray-400">{tx.metadata?.driverId || tx.metadata?.targaNo || '—'}</td>
+                        <td className="p-4 text-gray-400">{tx.driver?.name || tx.metadata?.driverId || '—'}</td>
                         <td className="p-4 text-gray-400">{tx.trip?.route?.name || tx.metadata?.route || '—'}</td>
-                        <td className="p-4 font-mono text-[11px] text-gray-500">{new Date(tx.createdAt).toLocaleString()}</td>
+                        <td className="p-4 font-mono text-[11px] text-gray-500">{tx.createdAt ? new Date(tx.createdAt).toLocaleString() : '—'}</td>
                       </tr>
                     ))}
                     {transactions.length === 0 && (

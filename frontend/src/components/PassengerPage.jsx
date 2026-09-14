@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { io } from 'socket.io-client';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://taxipayeth.onrender.com';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 
 const socket = io(API_BASE_URL, {
   withCredentials: true,
@@ -334,7 +334,7 @@ export default function PassengerPage({ user, onUserUpdate }) {
       if (selectedGateway === 'cbe_birr') bank_code = '946'; // CBE
       if (selectedGateway === 'chapa') bank_code = '855'; // fallback
 
-      const res = await fetch('https://taxipayeth.onrender.com/api/payments/chapa/withdraw', {
+      const res = await fetch('http://localhost:5001/api/payments/chapa/withdraw', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -410,7 +410,7 @@ export default function PassengerPage({ user, onUserUpdate }) {
     setIsProcessing(true);
 
     try {
-      const response = await fetch('https://taxipayeth.onrender.com/api/payments/checkout', {
+      const response = await fetch('http://localhost:5001/api/payments/checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

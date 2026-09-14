@@ -9,7 +9,7 @@ import DriverQRModal from './DriverQRModal';
 import DriverReceiptModal from './DriverReceiptModal';
 
 // Dynamic API & Socket URL setup
-const API_BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL) || 'https://taxipayeth.onrender.com';
+const API_BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL) || 'http://localhost:5001';
 const SOCKET_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SOCKET_URL) || API_BASE_URL;
 
 const socket = io(SOCKET_URL, {
@@ -183,7 +183,7 @@ export default function DriverPage({
           // Restore seat states from today's successful transactions after lastTripResetAt
           setSeatStates(prev => {
             const newStates = { ...prev };
-            
+
             // Only consider transactions after lastTripResetAt (if provided)
             let resetTime = 0;
             if (data.lastTripResetAt) {
@@ -236,7 +236,7 @@ export default function DriverPage({
     // Handler for seat status changes from the server
     const handleSeatStatusChange = (data) => {
       console.log('🔥 [DriverPage] RECEIVED SOCKET EVENT:', data);
-      
+
       const { seatNumbers, status, passengerName, amount, transactionId, timestamp } = data;
       if (!seatNumbers) {
         console.warn('⚠️ [DriverPage] Received event without seatNumbers!');
@@ -292,7 +292,25 @@ export default function DriverPage({
       socket.connect();
     }
 
+    let watchId;
+    if (navigator.geolocation) {
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const { latitude, longitude, heading, speed } = position.coords;
+          socket.emit('driver_location_update', {
+            lat: latitude,
+            lng: longitude,
+            heading,
+            speed
+          });
+        },
+        (err) => console.warn('Geolocation tracking disabled or failed:', err.message),
+        { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
+      );
+    }
+
     return () => {
+      if (watchId) navigator.geolocation.clearWatch(watchId);
       socket.off('seat_status_changed', handleSeatStatusChange);
       socket.off('connect', joinRooms);
       socket.disconnect();
