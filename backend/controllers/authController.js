@@ -278,11 +278,12 @@ exports.register =
         });
 
       if (role === 'driver' && targaNo) {
-        await Driver.create({
-          user: user._id,
-          targaNo: targaNo.trim()
-        });
-      }
+    await Driver.create({
+      user: user._id,
+      targaNo: targaNo.trim(),
+      driverId: 'DRV-' + crypto.randomInt(1000, 9999) // <-- ADD THIS LINE
+    });
+  }
 
       /*
        * Verification is single-use.
