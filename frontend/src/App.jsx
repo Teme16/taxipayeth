@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { useAuth } from './context/AuthContext.jsx';
 import PassengerPage from './components/PassengerPage';
@@ -14,7 +14,7 @@ function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [showImageModal, setShowImageModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  
+
   // Check URL for Chapa redirect
   const params = new URLSearchParams(window.location.search);
   const initialTxRef = params.get('tx_ref');
@@ -159,12 +159,12 @@ function App() {
 
       <main className="w-full">
         {showPaymentSuccess ? (
-          <PaymentSuccess 
+          <PaymentSuccess
             onComplete={() => {
               setShowPaymentSuccess(false);
               // Force AuthContext to refetch user data to update balance
               window.location.reload();
-            }} 
+            }}
           />
         ) : !isAuthenticated ? (
           <AuthPage />
