@@ -144,12 +144,7 @@ export default function ProfilePage({ user, balance, onClose, onProfileUpdated }
           driverFd.append('targaNo', formState.targaNo);
           driverFd.append('licenseNumber', formState.licenseNo);
           driverFd.append('address', formState.address);
-          
-          await fetch(`${API_BASE_URL}/api/drivers/complete-profile`, {
-             method: 'POST',
-             headers: { Authorization: `Bearer ${token}` },
-             body: driverFd
-          });
+          await axios.post(`${API_BASE_URL}/api/drivers/complete-profile`, driverFd, authHeader);
         }
         
         setMessage('Profile updated successfully!');
