@@ -140,3 +140,115 @@ exports.withdraw = asyncHandler(async (req, res) => {
     user
   });
 });
+
+// 6. Change Password
+exports.changePassword = asyncHandler(async (req, res) => {
+  const { oldPassword, newPassword } = req.body;
+  if (!oldPassword || !newPassword) {
+    const error = new Error('Old and new passwords are required.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const user = await User.findById(req.user._id).select('+password');
+  if (!user) {
+    const error = new Error('User not found.');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const isMatch = await user.matchPassword(oldPassword);
+  if (!isMatch) {
+    const error = new Error('Incorrect old password.');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  if (newPassword.length < 8) {
+    const error = new Error('New password must contain at least 8 characters.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  user.password = newPassword;
+  await user.save();
+
+  // Telegram Alert
+  const { bot } = require('../config/telegram');
+  if (bot && user.telegramChatId) {
+    const msg = `🔒 *Security Alert*\n\nYour TaxiPay account password was recently changed. If you did not make this change, please contact support immediately.`;
+    bot.sendMessage(user.telegramChatId, msg, { parse_mode: 'Markdown' })
+       .catch(err => console.error('Telegram notification failed:', err));
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: 'Password changed successfully.'
+  });
+});
+
+// 7. Delete Account
+exports.deleteAccount = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id);
+  if (!user) {
+    const error = new Error('User not found.');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  // Soft delete or hard delete. Let's do hard delete for now.
+  await User.findByIdAndDelete(req.user._id);
+
+  return res.status(200).json({
+    success: true,
+    message: 'Account deleted successfully.'
+  });
+});
+
+// 8. Submit Verification Request
+exports.verifyRequest = asyncHandler(async (req, res) => {
+  const { docType } = req.body;
+  if (!docType || !['national_id', 'kebele_id'].includes(docType)) {
+    const error = new Error('Valid docType (national_id, kebele_id) is required.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const files = req.files;
+  if (!files || !files.frontId || !files.frontId[0] || !files.backId || !files.backId[0]) {
+    const error = new Error('Both front and back ID images are required.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // Convert memory buffer to Base64 for DB storage
+  const frontBase64 = `data:${files.frontId[0].mimetype};base64,${files.frontId[0].buffer.toString('base64')}`;
+  const backBase64 = `data:${files.backId[0].mimetype};base64,${files.backId[0].buffer.toString('base64')}`;
+
+  const user = await User.findById(req.user._id);
+  if (!user) {
+    const error = new Error('User not found.');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  user.verificationStatus = 'pending';
+  user.idDocuments = {
+    docType,
+    frontUrl: frontBase64,
+    backUrl: backBase64,
+    submittedAt: new Date(),
+    rejectionReason: null
+  };
+
+  await user.save();
+
+  return res.status(200).json({
+    success: true,
+    message: 'Verification request submitted successfully. Status is now pending.',
+    user: {
+      ...user.toObject(),
+      verificationStatus: user.verificationStatus
+    }
+  });
+});

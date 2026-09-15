@@ -286,6 +286,78 @@ exports.approveUser = asyncHandler(async (req, res) => {
 });
 
 /**
+ * PATCH /api/admin/verify/:userId
+ */
+exports.verifyUser = asyncHandler(async (req, res) => {
+    assertValidObjectId(req.params.userId, 'User');
+
+    const { action, rejectionReason } = req.body;
+
+    if (!action || !['approve', 'reject'].includes(action)) {
+        throw createHttpError(
+            422,
+            'action must be "approve" or "reject".'
+        );
+    }
+
+    const updateFields = {};
+    if (action === 'approve') {
+        updateFields.verificationStatus = 'verified';
+    } else {
+        updateFields.verificationStatus = 'not_verified';
+        updateFields['idDocuments.rejectionReason'] = rejectionReason || 'No reason provided';
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.params.userId,
+        { $set: updateFields },
+        { returnDocument: 'after', runValidators: true }
+    ).select('-password');
+
+    if (!user) {
+        throw createHttpError(404, 'User not found.');
+    }
+
+    // Send Telegram Notification safely
+    try {
+        const { bot } = require('../config/telegram');
+        if (bot && user.telegramChatId) {
+            let msg = '';
+            if (action === 'approve') {
+                msg = `✅ *Verification Approved!*\n\nHello ${user.name}, your account verification has been approved.`;
+            } else if (action === 'reject') {
+                const reasonStr = rejectionReason || 'No reason provided';
+                msg = `❌ *Verification Rejected*\n\nHello ${user.name}, your verification request was rejected:\n\n*Reason*: ${reasonStr}\n\nPlease re-submit your documents.`;
+            }
+
+            if (msg) {
+                bot.sendMessage(user.telegramChatId, msg, {
+                    parse_mode: 'Markdown',
+                    disable_web_page_preview: true
+                }).catch(err => console.error('Telegram notification failed:', err));
+            }
+        }
+    } catch (err) {
+        console.error('Error handling Telegram bot:', err);
+    }
+
+    await SystemLog.logEvent({
+        action: `admin_verify_${action}_user`,
+        level: 'info',
+        performedBy: req.user._id,
+        targetUser: user._id,
+        details: `User verification ${action}ed.`,
+        req
+    });
+
+    return res.status(200).json({
+        success: true,
+        message: `User verification ${action}ed successfully.`,
+        user
+    });
+});
+
+/**
  * DELETE /api/admin/users/:id
  */
 exports.deleteUser = asyncHandler(async (req, res) => {

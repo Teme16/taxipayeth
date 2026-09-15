@@ -11,6 +11,9 @@ const {
   updateProfile,
   deposit,
   withdraw,
+  changePassword,
+  deleteAccount,
+  verifyRequest,
   profileValidators = []
 } = require('../controllers/userController');
 
@@ -53,6 +56,28 @@ const handleAvatarUpload = (req, res, next) => {
   });
 };
 
+const handleVerifyUploads = (req, res, next) => {
+  const multiUpload = upload.fields([
+    { name: 'frontId', maxCount: 1 },
+    { name: 'backId', maxCount: 1 }
+  ]);
+
+  multiUpload(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({
+          success: false,
+          message: 'File size exceeds the 5MB limit.'
+        });
+      }
+      return res.status(400).json({ success: false, message: err.message });
+    } else if (err) {
+      return res.status(400).json({ success: false, message: err.message });
+    }
+    next();
+  });
+};
+
 // ================= ROUTE DEFINITIONS ================= //
 
 // GET /api/users/profile — Fetch authenticated user's profile
@@ -72,5 +97,14 @@ router.post('/deposit', protect, deposit);
 
 // POST /api/users/withdraw — Withdraw funds
 router.post('/withdraw', protect, withdraw);
+
+// POST /api/users/change-password — Change user password
+router.post('/change-password', protect, changePassword);
+
+// DELETE /api/users/account — Delete user account
+router.delete('/account', protect, deleteAccount);
+
+// POST /api/users/verify-request — Submit ID documents for verification
+router.post('/verify-request', protect, handleVerifyUploads, verifyRequest);
 
 module.exports = router;

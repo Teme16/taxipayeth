@@ -18,6 +18,7 @@ const {
     updateUser,
     updateStatus,
     approveUser,
+    verifyUser,
     deleteUser,
     resetPassword,
     listTransactions,
@@ -67,6 +68,12 @@ router.patch(
     '/users/:id/approve',
     ...adminAuth,
     approveUser
+);
+
+router.patch(
+    '/verify/:userId',
+    ...adminAuth,
+    verifyUser
 );
 
 router.delete(

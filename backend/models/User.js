@@ -103,10 +103,22 @@ const userSchema = new mongoose.Schema(
       min: [0, 'Wallet balance cannot be negative']
     },
 
-    isVerified: {
-      type: Boolean,
-      default: false,
+    verificationStatus: {
+      type: String,
+      enum: ['not_verified', 'pending', 'verified'],
+      default: 'not_verified',
       index: true
+    },
+
+    idDocuments: {
+      docType: {
+        type: String,
+        enum: ['national_id', 'kebele_id']
+      },
+      frontUrl: String,
+      backUrl: String,
+      submittedAt: Date,
+      rejectionReason: String
     },
 
     isBlocked: {
