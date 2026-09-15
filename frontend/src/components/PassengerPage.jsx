@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { io } from 'socket.io-client';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
 
 const socket = io(API_BASE_URL, {
   withCredentials: true,
@@ -27,12 +27,26 @@ export default function PassengerPage({ user, onUserUpdate }) {
   useEffect(() => {
     if (token) {
       socket.auth = { token };
+      
+      const onConnect = () => {
+        const userId = user?._id || user?.id;
+        if (userId) {
+          socket.emit('register_online_user', userId);
+        }
+      };
+
+      socket.on('connect', onConnect);
       socket.connect();
+
+      if (socket.connected) {
+        onConnect();
+      }
     }
     return () => {
+      socket.off('connect');
       socket.disconnect();
     };
-  }, [token]);
+  }, [token, user]);
 
   const [showScanner, setShowScanner] = useState(false);
   const [scannedTaxi, setScannedTaxi] = useState(null);

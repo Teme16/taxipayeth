@@ -215,6 +215,7 @@ export default function DriverPage({
       // Join with User ObjectId (primary — matches what the payment route emits to)
       if (activeUserObjectId) {
         socket.emit('join_driver_room', activeUserObjectId);
+        socket.emit('register_online_user', activeUserObjectId);
       }
       // Join with display driverId as fallback
       if (activeDriverId && activeDriverId !== activeUserObjectId) {

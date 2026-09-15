@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { Loader2, CheckCircle2, XCircle, ArrowLeft } from 'lucide-react';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://taxipayeth.onrender.com';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://taxipayeth.onrender.com';
 
 export default function PaymentSuccess({ onComplete }) {
     const { token } = useAuth();
