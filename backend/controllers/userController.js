@@ -178,7 +178,7 @@ exports.changePassword = asyncHandler(async (req, res) => {
   if (bot && user.telegramChatId) {
     const msg = `🔒 *Security Alert*\n\nYour TaxiPay account password was recently changed. If you did not make this change, please contact support immediately.`;
     bot.sendMessage(user.telegramChatId, msg, { parse_mode: 'Markdown' })
-       .catch(err => console.error('Telegram notification failed:', err));
+      .catch(err => console.error('Telegram notification failed:', err));
   }
 
   return res.status(200).json({

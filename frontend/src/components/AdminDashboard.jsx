@@ -971,12 +971,12 @@ export default function AdminDashboard() {
               </span>
             </div>
 
-            {selectedUser.driverData?.profileImage && (
-              <div className="mb-4 rounded-3xl overflow-hidden border border-white/10 shadow-inner">
+            {(selectedUser.driverData?.profilePic || selectedUser.avatar) && (
+              <div className="mb-4 rounded-3xl overflow-hidden border border-white/10 shadow-inner flex justify-center bg-black/40">
                 <img
-                  src={`https://taxipayeth.onrender.com${selectedUser.driverData.profileImage}`}
+                  src={(selectedUser.driverData?.profilePic || selectedUser.avatar).startsWith('http') || (selectedUser.driverData?.profilePic || selectedUser.avatar).startsWith('data:') ? (selectedUser.driverData?.profilePic || selectedUser.avatar) : `https://taxipayeth.onrender.com${selectedUser.driverData?.profilePic || selectedUser.avatar}`}
                   alt="Driver Profile"
-                  className="w-full h-44 object-cover"
+                  className="w-full h-44 object-contain"
                   onError={(e) => {
                     e.target.onerror = null;
                     e.target.src = 'https://via.placeholder.com/400x200?text=Profile+Image+Not+Found';
@@ -995,7 +995,7 @@ export default function AdminDashboard() {
                 <>
                   <p><span className="text-gray-500">Plate Number:</span> <span className="text-blue-400 font-bold">{selectedUser.driverData.targaNo || 'N/A'}</span></p>
                   <p><span className="text-gray-500">Driver Code:</span> {selectedUser.driverData.driverId || 'N/A'}</p>
-                  <p><span className="text-gray-500">License No.:</span> {selectedUser.driverData.licenseNo || 'N/A'}</p>
+                  <p><span className="text-gray-500">License No.:</span> {selectedUser.driverData.licenseNumber || selectedUser.driverData.licenseNo || 'N/A'}</p>
                   <p><span className="text-gray-500">Birth Date:</span> {selectedUser.driverData.birthDate || 'N/A'}</p>
                   <p><span className="text-gray-500">Emergency Contact:</span> {selectedUser.driverData.emergencyContact || 'N/A'}</p>
                   <p><span className="text-gray-500">Address:</span> {selectedUser.driverData.address || 'N/A'}</p>

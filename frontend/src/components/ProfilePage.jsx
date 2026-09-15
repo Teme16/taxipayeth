@@ -28,7 +28,7 @@ export default function ProfilePage({ user, balance, onClose, onProfileUpdated }
   const [activeModal, setActiveModal] = useState('none'); // 'none' | 'password' | 'delete'
 
   // Form States
-  const [formState, setFormState] = useState({ 
+  const [formState, setFormState] = useState({
     name: '', phone: '', avatar: '',
     targaNo: '', licenseNo: '', address: ''
   });
@@ -55,9 +55,9 @@ export default function ProfilePage({ user, balance, onClose, onProfileUpdated }
         if (isMounted) {
           const u = res.data?.user || user;
           setProfile(u);
-          setFormState({ 
-            name: u.name || '', 
-            phone: u.phone || '', 
+          setFormState({
+            name: u.name || '',
+            phone: u.phone || '',
             avatar: u.avatar || '',
             targaNo: u.driverData?.targaNo || u.targaNo || '',
             licenseNo: u.driverData?.licenseNo || u.licenseNumber || '',
@@ -67,9 +67,9 @@ export default function ProfilePage({ user, balance, onClose, onProfileUpdated }
       } catch (err) {
         if (isMounted) {
           setProfile(user || {});
-          setFormState({ 
-            name: user?.name || '', 
-            phone: user?.phone || '', 
+          setFormState({
+            name: user?.name || '',
+            phone: user?.phone || '',
             avatar: user?.avatar || '',
             targaNo: user?.driverData?.targaNo || user?.targaNo || '',
             licenseNo: user?.driverData?.licenseNo || user?.licenseNumber || '',
@@ -146,10 +146,10 @@ export default function ProfilePage({ user, balance, onClose, onProfileUpdated }
           driverFd.append('address', formState.address);
           await axios.post(`${API_BASE_URL}/api/drivers/complete-profile`, driverFd, authHeader);
         }
-        
+
         setMessage('Profile updated successfully!');
         setSelectedAvatarFile(null);
-        
+
         // Refetch profile to get synchronized data
         const freshRes = await axios.get(`${API_BASE_URL}/api/users/profile`, authHeader);
         const updatedUser = freshRes.data?.user || { ...user, ...formState };
@@ -278,18 +278,18 @@ export default function ProfilePage({ user, balance, onClose, onProfileUpdated }
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xl flex items-center justify-center p-4 z-50 animate-fadeIn sm:p-6">
       <div className="glass-card border border-white/10 rounded-[2rem] w-full max-w-md text-white shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh] bg-gradient-to-b from-neutral-900/90 to-black/95">
-        
+
         {/* Cover Photo / Header Banner */}
         <div className="h-32 w-full bg-gradient-to-br from-blue-600/30 via-emerald-500/20 to-purple-600/30 relative">
           <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]"></div>
-          
+
           <button onClick={onClose} className="absolute top-4 right-4 p-2 text-white/70 hover:text-white bg-black/30 hover:bg-black/50 rounded-full backdrop-blur-md transition-all z-20">
             <X size={18} />
           </button>
 
           {/* Settings Gear */}
           <div className="absolute top-4 left-4 z-20" ref={settingsRef}>
-            <motion.button 
+            <motion.button
               onClick={() => setIsSettingsOpen(!isSettingsOpen)}
               animate={{ rotate: isSettingsOpen ? 180 : 0 }}
               transition={{ duration: 0.3 }}
@@ -297,10 +297,10 @@ export default function ProfilePage({ user, balance, onClose, onProfileUpdated }
             >
               <Settings size={18} />
             </motion.button>
-            
+
             <AnimatePresence>
               {isSettingsOpen && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, y: -10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -10, scale: 0.95 }}
@@ -435,10 +435,10 @@ export default function ProfilePage({ user, balance, onClose, onProfileUpdated }
               {mode === 'edit' && (
                 <motion.form initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} onSubmit={handleProfileSave} className="space-y-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <button type="button" onClick={() => setMode('view')} className="p-1 text-gray-400 hover:text-white"><ChevronLeft size={20}/></button>
+                    <button type="button" onClick={() => setMode('view')} className="p-1 text-gray-400 hover:text-white"><ChevronLeft size={20} /></button>
                     <h3 className="font-bold">Edit Profile</h3>
                   </div>
-                  
+
                   {profile?.verificationStatus === 'verified' && (
                     <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-400/90 rounded-xl text-xs">
                       Note: You are verified. Major changes may require re-verification.
@@ -447,26 +447,26 @@ export default function ProfilePage({ user, balance, onClose, onProfileUpdated }
 
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-extrabold uppercase tracking-wider text-gray-400 block ml-1">Full Name</label>
-                    <input type="text" value={formState.name} onChange={(e) => setFormState({...formState, name: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-2xl p-3.5 text-sm text-white outline-none focus:border-emerald-500/50 transition-all" required />
+                    <input type="text" value={formState.name} onChange={(e) => setFormState({ ...formState, name: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-2xl p-3.5 text-sm text-white outline-none focus:border-emerald-500/50 transition-all" required />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-extrabold uppercase tracking-wider text-gray-400 block ml-1">Phone Number</label>
-                    <input type="tel" value={formState.phone} onChange={(e) => setFormState({...formState, phone: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-2xl p-3.5 text-sm font-mono text-white outline-none focus:border-emerald-500/50 transition-all" required />
+                    <input type="tel" value={formState.phone} onChange={(e) => setFormState({ ...formState, phone: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-2xl p-3.5 text-sm font-mono text-white outline-none focus:border-emerald-500/50 transition-all" required />
                   </div>
-                  
+
                   {profile?.role === 'driver' && (
                     <>
                       <div className="space-y-1.5">
                         <label className="text-[11px] font-extrabold uppercase tracking-wider text-gray-400 block ml-1">Plate Number</label>
-                        <input type="text" value={formState.targaNo} onChange={(e) => setFormState({...formState, targaNo: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-2xl p-3.5 text-sm font-mono text-white outline-none focus:border-emerald-500/50 transition-all" required />
+                        <input type="text" value={formState.targaNo} onChange={(e) => setFormState({ ...formState, targaNo: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-2xl p-3.5 text-sm font-mono text-white outline-none focus:border-emerald-500/50 transition-all" required />
                       </div>
                       <div className="space-y-1.5">
                         <label className="text-[11px] font-extrabold uppercase tracking-wider text-gray-400 block ml-1">License No.</label>
-                        <input type="text" value={formState.licenseNo} onChange={(e) => setFormState({...formState, licenseNo: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-2xl p-3.5 text-sm font-mono text-white outline-none focus:border-emerald-500/50 transition-all" />
+                        <input type="text" value={formState.licenseNo} onChange={(e) => setFormState({ ...formState, licenseNo: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-2xl p-3.5 text-sm font-mono text-white outline-none focus:border-emerald-500/50 transition-all" />
                       </div>
                       <div className="space-y-1.5">
                         <label className="text-[11px] font-extrabold uppercase tracking-wider text-gray-400 block ml-1">Address / City</label>
-                        <input type="text" value={formState.address} onChange={(e) => setFormState({...formState, address: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-2xl p-3.5 text-sm text-white outline-none focus:border-emerald-500/50 transition-all" />
+                        <input type="text" value={formState.address} onChange={(e) => setFormState({ ...formState, address: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-2xl p-3.5 text-sm text-white outline-none focus:border-emerald-500/50 transition-all" />
                       </div>
                     </>
                   )}
@@ -481,13 +481,13 @@ export default function ProfilePage({ user, balance, onClose, onProfileUpdated }
               {mode === 'verify' && (
                 <motion.form initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} onSubmit={handleVerifySubmit} className="space-y-5">
                   <div className="flex items-center gap-2 mb-2">
-                    <button type="button" onClick={() => setMode('view')} className="p-1 text-gray-400 hover:text-white"><ChevronLeft size={20}/></button>
+                    <button type="button" onClick={() => setMode('view')} className="p-1 text-gray-400 hover:text-white"><ChevronLeft size={20} /></button>
                     <h3 className="font-bold">Submit Verification</h3>
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-extrabold uppercase tracking-wider text-gray-400 block ml-1">Document Type</label>
-                    <select value={verifyForm.docType} onChange={e => setVerifyForm({...verifyForm, docType: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-2xl p-3.5 text-sm text-white outline-none focus:border-emerald-500/50 transition-all appearance-none">
+                    <select value={verifyForm.docType} onChange={e => setVerifyForm({ ...verifyForm, docType: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-2xl p-3.5 text-sm text-white outline-none focus:border-emerald-500/50 transition-all appearance-none">
                       <option value="national_id">National ID</option>
                       <option value="kebele_id">Kebele / Local ID</option>
                     </select>
@@ -542,27 +542,27 @@ export default function ProfilePage({ user, balance, onClose, onProfileUpdated }
         {activeModal === 'password' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
             <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} className="bg-neutral-900 border border-white/10 rounded-3xl p-6 w-full max-w-sm shadow-2xl relative">
-              <button onClick={() => setActiveModal('none')} className="absolute top-4 right-4 text-gray-500 hover:text-white"><X size={18}/></button>
-              <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Key size={18} className="text-emerald-400"/> Change Password</h3>
-              
+              <button onClick={() => setActiveModal('none')} className="absolute top-4 right-4 text-gray-500 hover:text-white"><X size={18} /></button>
+              <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Key size={18} className="text-emerald-400" /> Change Password</h3>
+
               <form onSubmit={handlePasswordChange} className="space-y-4">
                 {['old', 'new', 'confirm'].map((type) => (
                   <div key={type} className="relative">
-                    <input 
-                      type={showPass[type] ? 'text' : 'password'} 
+                    <input
+                      type={showPass[type] ? 'text' : 'password'}
                       placeholder={type === 'old' ? 'Old Password' : type === 'new' ? 'New Password' : 'Confirm Password'}
                       value={type === 'old' ? passForm.oldPassword : type === 'new' ? passForm.newPassword : passForm.confirmPassword}
-                      onChange={e => setPassForm(p => ({ ...p, [type+'Password']: e.target.value }))}
+                      onChange={e => setPassForm(p => ({ ...p, [type + 'Password']: e.target.value }))}
                       className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-white pr-10 focus:border-emerald-500/50 outline-none transition-all"
                       required
                     />
                     <button type="button" onClick={() => setShowPass(p => ({ ...p, [type]: !p[type] }))} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
-                      {showPass[type] ? <EyeOff size={16}/> : <Eye size={16}/>}
+                      {showPass[type] ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
                 ))}
                 <button type="submit" disabled={saving} className="w-full bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-3 rounded-xl mt-2 flex justify-center disabled:opacity-50">
-                  {saving ? <Loader2 size={16} className="animate-spin"/> : 'Update Password'}
+                  {saving ? <Loader2 size={16} className="animate-spin" /> : 'Update Password'}
                 </button>
               </form>
             </motion.div>
@@ -580,18 +580,18 @@ export default function ProfilePage({ user, balance, onClose, onProfileUpdated }
               </div>
               <h3 className="text-xl font-black mb-2 text-white">Delete Account?</h3>
               <p className="text-sm text-gray-400 mb-6">Are you absolutely sure? This action cannot be undone and you will lose all data.</p>
-              
+
               <div className="flex gap-3">
                 <button onClick={() => setActiveModal('none')} disabled={saving} className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-xl disabled:opacity-50">Cancel</button>
                 <button onClick={handleDeleteAccount} disabled={saving} className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(225,29,72,0.4)] disabled:opacity-50">
-                  {saving ? <Loader2 size={16} className="animate-spin"/> : 'Yes, Delete'}
+                  {saving ? <Loader2 size={16} className="animate-spin" /> : 'Yes, Delete'}
                 </button>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-      
+
     </div>
   );
 }

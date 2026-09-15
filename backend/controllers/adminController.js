@@ -10,6 +10,7 @@ const Trip = require('../models/Trip');
 const Route = require('../models/Route');
 const SystemLog = require('../models/SystemLog');
 const Zone = require('../models/Zone');
+const Driver = require('../models/Driver');
 
 const asyncHandler = require('../utils/asyncHandler');
 
@@ -95,6 +96,15 @@ exports.listUsers = asyncHandler(async (req, res) => {
         User.countDocuments(filter)
     ]);
 
+    for (let u of users) {
+        if (u.role === 'driver') {
+            const driverData = await Driver.findOne({ user: u._id }).lean();
+            if (driverData) {
+                u.driverData = driverData;
+            }
+        }
+    }
+
     return res.status(200).json({
         success: true,
         users,
@@ -119,6 +129,13 @@ exports.getUser = asyncHandler(async (req, res) => {
 
     if (!user) {
         throw createHttpError(404, 'User not found.');
+    }
+
+    if (user.role === 'driver') {
+        const driverData = await Driver.findOne({ user: user._id }).lean();
+        if (driverData) {
+            user.driverData = driverData;
+        }
     }
 
     return res.status(200).json({
