@@ -987,25 +987,56 @@ export default function AdminDashboard() {
             {selectedUser.role === 'driver' && (
               <div className="mb-6">
                 <h4 className="text-xs font-extrabold uppercase text-gray-400 tracking-wider mb-3">Verification Documents</h4>
-                {selectedUser.driverData?.documentUrl || selectedUser.driverData?.licenseImage ? (
-                  <div className="relative group glass-panel border border-white/10 rounded-2xl overflow-hidden p-2">
-                    <img
-                      src={`https://taxipayeth.onrender.com${selectedUser.driverData.documentUrl || selectedUser.driverData.licenseImage}`}
-                      alt="Driver Document"
-                      className="w-full h-48 object-cover rounded-xl"
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = 'https://via.placeholder.com/400x200?text=Document+Image+Not+Found';
-                      }}
-                    />
-                    <a
-                      href={`https://taxipayeth.onrender.com${selectedUser.driverData.documentUrl || selectedUser.driverData.licenseImage}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="absolute bottom-4 right-4 bg-black/80 hover:bg-black text-white text-xs font-bold px-3 py-1.5 rounded-lg border border-white/20 backdrop-blur-sm transition"
-                    >
-                      🔍 Open Full Size
-                    </a>
+                {(selectedUser.idDocuments?.frontId || selectedUser.idDocuments?.backId) ? (
+                  <div className="grid grid-cols-2 gap-4">
+                    {selectedUser.idDocuments.frontId && (
+                      <div className="relative group glass-panel border border-white/10 rounded-2xl overflow-hidden p-2">
+                        <img
+                          src={selectedUser.idDocuments.frontId}
+                          alt="Front ID"
+                          className="w-full h-32 object-cover rounded-xl"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = 'https://via.placeholder.com/400x200?text=Image+Not+Found';
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center p-2">
+                          <span className="text-white text-xs font-bold mb-2">Front ID</span>
+                          <a
+                            href={selectedUser.idDocuments.frontId}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="bg-emerald-500/80 hover:bg-emerald-500 text-white text-xs px-3 py-1.5 rounded-lg border border-white/20 backdrop-blur-sm transition"
+                          >
+                            🔍 Open
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                    {selectedUser.idDocuments.backId && (
+                      <div className="relative group glass-panel border border-white/10 rounded-2xl overflow-hidden p-2">
+                        <img
+                          src={selectedUser.idDocuments.backId}
+                          alt="Back ID"
+                          className="w-full h-32 object-cover rounded-xl"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = 'https://via.placeholder.com/400x200?text=Image+Not+Found';
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center p-2">
+                          <span className="text-white text-xs font-bold mb-2">Back ID</span>
+                          <a
+                            href={selectedUser.idDocuments.backId}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="bg-emerald-500/80 hover:bg-emerald-500 text-white text-xs px-3 py-1.5 rounded-lg border border-white/20 backdrop-blur-sm transition"
+                          >
+                            🔍 Open
+                          </a>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="glass-panel/60 border border-dashed border-white/10 rounded-2xl p-4 text-center text-xs text-gray-500">

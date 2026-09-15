@@ -24,6 +24,12 @@ function App() {
     updateUser(updatedUser);
   };
 
+  useEffect(() => {
+    const handleOpenProfile = () => setShowProfileModal(true);
+    window.addEventListener('openProfile', handleOpenProfile);
+    return () => window.removeEventListener('openProfile', handleOpenProfile);
+  }, []);
+
   // Show splash screen first
   if (showSplash) {
     return <SplashScreen onFinish={() => setShowSplash(false)} duration={2200} />;

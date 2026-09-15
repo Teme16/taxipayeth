@@ -28,7 +28,10 @@ export default function ProfilePage({ user, balance, onClose, onProfileUpdated }
   const [activeModal, setActiveModal] = useState('none'); // 'none' | 'password' | 'delete'
 
   // Form States
-  const [formState, setFormState] = useState({ name: '', phone: '', avatar: '' });
+  const [formState, setFormState] = useState({ 
+    name: '', phone: '', avatar: '',
+    targaNo: '', licenseNo: '', address: ''
+  });
   const [selectedAvatarFile, setSelectedAvatarFile] = useState(null);
 
   // Verification Form State
@@ -52,12 +55,26 @@ export default function ProfilePage({ user, balance, onClose, onProfileUpdated }
         if (isMounted) {
           const u = res.data?.user || user;
           setProfile(u);
-          setFormState({ name: u.name || '', phone: u.phone || '', avatar: u.avatar || '' });
+          setFormState({ 
+            name: u.name || '', 
+            phone: u.phone || '', 
+            avatar: u.avatar || '',
+            targaNo: u.driverData?.targaNo || u.targaNo || '',
+            licenseNo: u.driverData?.licenseNo || u.licenseNumber || '',
+            address: u.driverData?.address || u.address || ''
+          });
         }
       } catch (err) {
         if (isMounted) {
           setProfile(user || {});
-          setFormState({ name: user?.name || '', phone: user?.phone || '', avatar: user?.avatar || '' });
+          setFormState({ 
+            name: user?.name || '', 
+            phone: user?.phone || '', 
+            avatar: user?.avatar || '',
+            targaNo: user?.driverData?.targaNo || user?.targaNo || '',
+            licenseNo: user?.driverData?.licenseNo || user?.licenseNumber || '',
+            address: user?.driverData?.address || user?.address || ''
+          });
         }
       } finally {
         if (isMounted) setLoading(false);
@@ -119,9 +136,28 @@ export default function ProfilePage({ user, balance, onClose, onProfileUpdated }
       }
 
       if (res.data?.success) {
+        if (profile?.role === 'driver') {
+          const driverFd = new FormData();
+          driverFd.append('driverId', profile.driverData?.driverId || profile._id);
+          driverFd.append('fullName', formState.name);
+          driverFd.append('mobileNumber', formState.phone);
+          driverFd.append('targaNo', formState.targaNo);
+          driverFd.append('licenseNumber', formState.licenseNo);
+          driverFd.append('address', formState.address);
+          
+          await fetch(`${API_BASE_URL}/api/drivers/complete-profile`, {
+             method: 'POST',
+             headers: { Authorization: `Bearer ${token}` },
+             body: driverFd
+          });
+        }
+        
         setMessage('Profile updated successfully!');
         setSelectedAvatarFile(null);
-        const updatedUser = res.data.user || { ...user, ...formState };
+        
+        // Refetch profile to get synchronized data
+        const freshRes = await axios.get(`${API_BASE_URL}/api/users/profile`, authHeader);
+        const updatedUser = freshRes.data?.user || { ...user, ...formState };
         setProfile(updatedUser);
         updateUser(updatedUser);
         if (onProfileUpdated) onProfileUpdated(updatedUser);
@@ -422,6 +458,23 @@ export default function ProfilePage({ user, balance, onClose, onProfileUpdated }
                     <label className="text-[11px] font-extrabold uppercase tracking-wider text-gray-400 block ml-1">Phone Number</label>
                     <input type="tel" value={formState.phone} onChange={(e) => setFormState({...formState, phone: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-2xl p-3.5 text-sm font-mono text-white outline-none focus:border-emerald-500/50 transition-all" required />
                   </div>
+                  
+                  {profile?.role === 'driver' && (
+                    <>
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-extrabold uppercase tracking-wider text-gray-400 block ml-1">Plate Number</label>
+                        <input type="text" value={formState.targaNo} onChange={(e) => setFormState({...formState, targaNo: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-2xl p-3.5 text-sm font-mono text-white outline-none focus:border-emerald-500/50 transition-all" required />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-extrabold uppercase tracking-wider text-gray-400 block ml-1">License No.</label>
+                        <input type="text" value={formState.licenseNo} onChange={(e) => setFormState({...formState, licenseNo: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-2xl p-3.5 text-sm font-mono text-white outline-none focus:border-emerald-500/50 transition-all" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-extrabold uppercase tracking-wider text-gray-400 block ml-1">Address / City</label>
+                        <input type="text" value={formState.address} onChange={(e) => setFormState({...formState, address: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-2xl p-3.5 text-sm text-white outline-none focus:border-emerald-500/50 transition-all" />
+                      </div>
+                    </>
+                  )}
 
                   <button type="submit" disabled={saving} className="w-full bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-3.5 rounded-2xl text-sm transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-50">
                     {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />} Save Changes
