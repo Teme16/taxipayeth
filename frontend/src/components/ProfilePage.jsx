@@ -7,7 +7,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://taxipayeth.on
 
 export default function ProfilePage({ user, balance, onClose, onProfileUpdated }) {
   const { updateUser } = useAuth();
-  
+
   const token = localStorage.getItem('taxipay_token');
   const authHeader = { headers: { Authorization: `Bearer ${token}` } };
 
@@ -24,10 +24,10 @@ export default function ProfilePage({ user, balance, onClose, onProfileUpdated }
   const [error, setError] = useState(null);
 
   const avatarPresets = [
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80'
+    'https://wallpapers.com/images/featured/cool-profile-pictures-87h46gcobjl5e4xu.jpg',
+    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS9J0u0OAtfmE-M-k_Lu6atDbp1YQ-FKfGkzSgMPpNvl0EDFMM1vovVTYI&s=10',
+    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQH8nvGPqRjxPUUWxBOK9OfDUvTnmbhPo-DhTROH7Esew&s=10',
+    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRqI-JUXChfcely583b6UzK-U-BQOALt-x_XrcscjyXzE4_lTlO99Sc0oeM&s=10'
   ];
 
   useEffect(() => {
@@ -162,7 +162,7 @@ export default function ProfilePage({ user, balance, onClose, onProfileUpdated }
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xl flex items-center justify-center p-4 z-50 animate-fadeIn sm:p-6">
       <div className="glass-card border border-white/10 rounded-[2rem] w-full max-w-md text-white shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh] bg-gradient-to-b from-neutral-900/80 to-black/95">
-        
+
         {/* Cover Photo / Header Banner */}
         <div className="h-32 w-full bg-gradient-to-br from-blue-600/50 via-emerald-500/30 to-purple-600/40 relative">
           <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]"></div>
@@ -177,9 +177,9 @@ export default function ProfilePage({ user, balance, onClose, onProfileUpdated }
 
         {/* Content Body */}
         <div className="px-6 pb-6 -mt-16 space-y-5 overflow-y-auto relative z-10 custom-scrollbar">
-          
+
           <form onSubmit={handleSave} className="space-y-6">
-            
+
             {/* Profile Picture & Badges Section */}
             <div className="flex flex-col items-center">
               <div className="relative group">
