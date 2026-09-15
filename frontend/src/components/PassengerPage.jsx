@@ -348,7 +348,7 @@ export default function PassengerPage({ user, onUserUpdate }) {
       if (selectedGateway === 'cbe_birr') bank_code = '946'; // CBE
       if (selectedGateway === 'chapa') bank_code = '855'; // fallback
 
-      const res = await fetch('http://localhost:5001/api/payments/chapa/withdraw', {
+      const res = await fetch(`${API_BASE_URL}/api/payments/chapa/withdraw`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -424,7 +424,7 @@ export default function PassengerPage({ user, onUserUpdate }) {
     setIsProcessing(true);
 
     try {
-      const response = await fetch('http://localhost:5001/api/payments/checkout', {
+      const response = await fetch(`${API_BASE_URL}/api/payments/checkout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
