@@ -302,6 +302,26 @@ export default function AdminDashboard() {
       setTimeout(() => setLiveNotification(null), 4000);
     }
   };
+
+  const handleVerifyDocument = async (userId, action) => {
+    try {
+      await axios.patch(
+        `${API_BASE_URL}/api/admin/verify/${userId}`,
+        { action },
+        authHeader
+      );
+      setLiveNotification(`✅ Document ${action === 'approve' ? 'approved' : 'rejected'}`);
+      fetchAdminData();
+      if (selectedUser?._id === userId) {
+        setSelectedUser(prev => ({ ...prev, verificationStatus: action === 'approve' ? 'verified' : 'not_verified' }));
+      }
+    } catch (err) {
+      setLiveNotification('❌ Error verifying document');
+    } finally {
+      setTimeout(() => setLiveNotification(null), 4000);
+    }
+  };
+
   const handleToggleBlock = async (userId, currentStatus) => {
     try {
       await axios.patch(`${API_BASE_URL}/api/admin/users/${userId}/status`, { isBlocked: !currentStatus }, authHeader);
@@ -987,12 +1007,12 @@ export default function AdminDashboard() {
             {selectedUser.role === 'driver' && (
               <div className="mb-6">
                 <h4 className="text-xs font-extrabold uppercase text-gray-400 tracking-wider mb-3">Verification Documents</h4>
-                {(selectedUser.idDocuments?.frontId || selectedUser.idDocuments?.backId) ? (
+                {(selectedUser.idDocuments?.frontUrl || selectedUser.idDocuments?.backUrl) ? (
                   <div className="grid grid-cols-2 gap-4">
-                    {selectedUser.idDocuments.frontId && (
+                    {selectedUser.idDocuments.frontUrl && (
                       <div className="relative group glass-panel border border-white/10 rounded-2xl overflow-hidden p-2">
                         <img
-                          src={selectedUser.idDocuments.frontId}
+                          src={selectedUser.idDocuments.frontUrl}
                           alt="Front ID"
                           className="w-full h-32 object-cover rounded-xl"
                           onError={(e) => {
@@ -1003,7 +1023,7 @@ export default function AdminDashboard() {
                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center p-2">
                           <span className="text-white text-xs font-bold mb-2">Front ID</span>
                           <a
-                            href={selectedUser.idDocuments.frontId}
+                            href={selectedUser.idDocuments.frontUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="bg-emerald-500/80 hover:bg-emerald-500 text-white text-xs px-3 py-1.5 rounded-lg border border-white/20 backdrop-blur-sm transition"
@@ -1013,10 +1033,10 @@ export default function AdminDashboard() {
                         </div>
                       </div>
                     )}
-                    {selectedUser.idDocuments.backId && (
+                    {selectedUser.idDocuments.backUrl && (
                       <div className="relative group glass-panel border border-white/10 rounded-2xl overflow-hidden p-2">
                         <img
-                          src={selectedUser.idDocuments.backId}
+                          src={selectedUser.idDocuments.backUrl}
                           alt="Back ID"
                           className="w-full h-32 object-cover rounded-xl"
                           onError={(e) => {
@@ -1027,7 +1047,7 @@ export default function AdminDashboard() {
                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center p-2">
                           <span className="text-white text-xs font-bold mb-2">Back ID</span>
                           <a
-                            href={selectedUser.idDocuments.backId}
+                            href={selectedUser.idDocuments.backUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="bg-emerald-500/80 hover:bg-emerald-500 text-white text-xs px-3 py-1.5 rounded-lg border border-white/20 backdrop-blur-sm transition"
@@ -1041,6 +1061,22 @@ export default function AdminDashboard() {
                 ) : (
                   <div className="glass-panel/60 border border-dashed border-white/10 rounded-2xl p-4 text-center text-xs text-gray-500">
                     No verification document uploaded yet.
+                  </div>
+                )}
+                {selectedUser.verificationStatus === 'pending' && (
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      onClick={() => handleVerifyDocument(selectedUser._id, 'approve')}
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-500 py-2.5 rounded-xl font-bold transition text-xs text-white"
+                    >
+                      Verify Documents
+                    </button>
+                    <button
+                      onClick={() => handleVerifyDocument(selectedUser._id, 'reject')}
+                      className="flex-1 bg-rose-600 hover:bg-rose-500 py-2.5 rounded-xl font-bold transition text-xs text-white"
+                    >
+                      Reject Documents
+                    </button>
                   </div>
                 )}
               </div>
