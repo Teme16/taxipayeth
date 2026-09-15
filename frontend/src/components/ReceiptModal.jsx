@@ -16,7 +16,7 @@ export default function ReceiptModal({ history, user, onClose }) {
 
   // Helper to determine if transaction represents money outgoing/loss
   const isOutgoingTxn = (type) => {
-    const outgoingTypes = ['payment', 'withdraw', 'withdrawal', 'payout', 'send'];
+    const outgoingTypes = ['payment', 'withdraw', 'withdrawal', 'payout', 'send', 'fare'];
     return outgoingTypes.includes(type?.toLowerCase());
   };
 
