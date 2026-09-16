@@ -269,7 +269,7 @@ exports.register =
             verification.telegramChatId ||
             '',
 
-          isVerified: true,
+          verificationStatus: 'verified',
 
           approvalStatus:
             role === 'driver'
