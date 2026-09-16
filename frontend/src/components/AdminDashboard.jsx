@@ -10,6 +10,7 @@ import {
   Tooltip,
   CartesianGrid
 } from 'recharts';
+import { Bell } from 'lucide-react';
 import LiveFleetMap from './LiveFleetMap';
 
 const API_BASE_URL =
@@ -47,6 +48,33 @@ export default function AdminDashboard() {
   // Live Online Users Tracker & Toast States
   const [onlineUserIds, setOnlineUserIds] = useState([]);
   const [liveNotification, setLiveNotification] = useState(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Play a simple notification sound using Web Audio API
+  const playNotificationSound = () => {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+      osc.frequency.exponentialRampToValueAtTime(1046.50, ctx.currentTime + 0.1); // C6
+      gainNode.gain.setValueAtTime(0.2, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.2);
+    } catch (e) { console.warn('Audio play failed:', e); }
+  };
+
+  const triggerNotification = (message) => {
+    playNotificationSound();
+    setLiveNotification(message);
+    setUnreadCount(prev => prev + 1);
+  };
 
   const token = localStorage.getItem('taxipay_token');
   const authHeader = { headers: { Authorization: `Bearer ${token}` } };
@@ -143,8 +171,8 @@ export default function AdminDashboard() {
       };
 
       if (!payload.name || !payload.origin || !payload.destination || Number.isNaN(payload.baseFare) || Number.isNaN(payload.distance)) {
-        setLiveNotification('⚠️ Please fill out all route fields correctly.');
-        setTimeout(() => setLiveNotification(null), 3000);
+        triggerNotification('⚠️ Please fill out all route fields correctly.');
+        setTimeout(() => triggerNotification(null), 3000);
         return;
       }
 
@@ -154,13 +182,13 @@ export default function AdminDashboard() {
       const method = editingRoute ? axios.put : axios.post;
       await method(url, payload, authHeader);
 
-      setLiveNotification(editingRoute ? '✅ Route updated successfully.' : '✅ Route created successfully.');
+      triggerNotification(editingRoute ? '✅ Route updated successfully.' : '✅ Route created successfully.');
       resetRouteForm();
       fetchRoutes();
       fetchAdminData();
     } catch (err) {
-      setLiveNotification(`❌ ${err.response?.data?.message || 'Unable to save route.'}`);
-      setTimeout(() => setLiveNotification(null), 4000);
+      triggerNotification(`❌ ${err.response?.data?.message || 'Unable to save route.'}`);
+      setTimeout(() => triggerNotification(null), 4000);
     }
   };
 
@@ -180,13 +208,13 @@ export default function AdminDashboard() {
     if (!window.confirm('Delete this route permanently?')) return;
     try {
       await axios.delete(`${API_BASE_URL}/api/admin/routes/${routeId}`, authHeader);
-      setLiveNotification('✅ Route deleted successfully.');
+      triggerNotification('✅ Route deleted successfully.');
       fetchRoutes();
       fetchAdminData();
     } catch (err) {
-      setLiveNotification('❌ Unable to delete route.');
+      triggerNotification('❌ Unable to delete route.');
     } finally {
-      setTimeout(() => setLiveNotification(null), 4000);
+      setTimeout(() => triggerNotification(null), 4000);
     }
   };
 
@@ -220,14 +248,14 @@ export default function AdminDashboard() {
     });
 
     socket.on('new_user_registered', (data) => {
-      setLiveNotification(`🎉 New ${data.role} registered: ${data.name} (Pending Approval)`);
+      triggerNotification(`🎉 New ${data.role} registered: ${data.name} (Pending Approval)`);
       fetchAdminData();
-      setTimeout(() => setLiveNotification(null), 5000);
+      setTimeout(() => triggerNotification(null), 5000);
     });
 
     // ⚡ Real-Time Profile Updates Listener
     socket.on('user_updated', (updatedData) => {
-      setLiveNotification(`🔄 Profile updated for ${updatedData.name}`);
+      triggerNotification(`🔄 Profile updated for ${updatedData.name}`);
       fetchAdminData();
 
       // Dynamically update modal if currently viewed user is updated
@@ -243,7 +271,7 @@ export default function AdminDashboard() {
         return prev;
       });
 
-      setTimeout(() => setLiveNotification(null), 4000);
+      setTimeout(() => triggerNotification(null), 4000);
     });
 
     socket.on('user_status_changed', () => fetchAdminData());
@@ -261,8 +289,8 @@ export default function AdminDashboard() {
 
   const executeResetPassword = async () => {
     if (!newPasswordInput || newPasswordInput.trim().length < 4) {
-      setLiveNotification('⚠️ Password must be at least 4 characters long.');
-      setTimeout(() => setLiveNotification(null), 3000);
+      triggerNotification('⚠️ Password must be at least 4 characters long.');
+      setTimeout(() => triggerNotification(null), 3000);
       return;
     }
 
@@ -272,14 +300,14 @@ export default function AdminDashboard() {
         { newPassword: newPasswordInput.trim() },
         authHeader
       );
-      setLiveNotification(`✅ ${res.data.message}`);
+      triggerNotification(`✅ ${res.data.message}`);
       setResetPassUser(null);
       setNewPasswordInput('');
       fetchAdminData();
     } catch (err) {
-      setLiveNotification(`❌ ${err.response?.data?.message || 'Error updating password'}`);
+      triggerNotification(`❌ ${err.response?.data?.message || 'Error updating password'}`);
     } finally {
-      setTimeout(() => setLiveNotification(null), 4000);
+      setTimeout(() => triggerNotification(null), 4000);
     }
   };
 
@@ -290,16 +318,16 @@ export default function AdminDashboard() {
         { approvalStatus: newStatus }, // Note: the backend expects approvalStatus, not status
         authHeader
       );
-      setLiveNotification(`✅ User status updated to ${newStatus.toUpperCase()}`);
+      triggerNotification(`✅ User status updated to ${newStatus.toUpperCase()}`);
       fetchAdminData();
 
       if (selectedUser?._id === userId) {
         setSelectedUser(prev => ({ ...prev, approvalStatus: newStatus }));
       }
     } catch (err) {
-      setLiveNotification('❌ Error updating approval status');
+      triggerNotification('❌ Error updating approval status');
     } finally {
-      setTimeout(() => setLiveNotification(null), 4000);
+      setTimeout(() => triggerNotification(null), 4000);
     }
   };
 
@@ -310,41 +338,41 @@ export default function AdminDashboard() {
         { action },
         authHeader
       );
-      setLiveNotification(`✅ Document ${action === 'approve' ? 'approved' : 'rejected'}`);
+      triggerNotification(`✅ Document ${action === 'approve' ? 'approved' : 'rejected'}`);
       fetchAdminData();
       if (selectedUser?._id === userId) {
         setSelectedUser(prev => ({ ...prev, verificationStatus: action === 'approve' ? 'verified' : 'not_verified' }));
       }
     } catch (err) {
-      setLiveNotification('❌ Error verifying document');
+      triggerNotification('❌ Error verifying document');
     } finally {
-      setTimeout(() => setLiveNotification(null), 4000);
+      setTimeout(() => triggerNotification(null), 4000);
     }
   };
 
   const handleToggleBlock = async (userId, currentStatus) => {
     try {
       await axios.patch(`${API_BASE_URL}/api/admin/users/${userId}/status`, { isBlocked: !currentStatus }, authHeader);
-      setLiveNotification(`✅ User ${currentStatus ? 'unblocked' : 'blocked'} successfully`);
+      triggerNotification(`✅ User ${currentStatus ? 'unblocked' : 'blocked'} successfully`);
       fetchAdminData();
     } catch (err) {
-      setLiveNotification('❌ Error updating block status');
+      triggerNotification('❌ Error updating block status');
     } finally {
-      setTimeout(() => setLiveNotification(null), 4000);
+      setTimeout(() => triggerNotification(null), 4000);
     }
   };
   const executeDeleteUser = async () => {
     if (!deleteConfirmUser) return;
     try {
       await axios.delete(`${API_BASE_URL}/api/admin/users/${deleteConfirmUser._id}`, authHeader);
-      setLiveNotification(`🗑️ Account for ${deleteConfirmUser.name} deleted.`);
+      triggerNotification(`🗑️ Account for ${deleteConfirmUser.name} deleted.`);
       setSelectedUser(null);
       setDeleteConfirmUser(null);
       fetchAdminData();
     } catch (err) {
-      setLiveNotification('❌ Error deleting account');
+      triggerNotification('❌ Error deleting account');
     } finally {
-      setTimeout(() => setLiveNotification(null), 4000);
+      setTimeout(() => triggerNotification(null), 4000);
     }
   };
   const handleBroadcast = async (e) => {
@@ -352,12 +380,12 @@ export default function AdminDashboard() {
     if (!broadcastMessage.trim()) return;
     try {
       const res = await axios.post(`${API_BASE_URL}/api/admin/broadcast`, { audience: broadcastAudience, message: broadcastMessage }, authHeader);
-      setLiveNotification(`📢 ${res.data.message}`);
+      triggerNotification(`📢 ${res.data.message}`);
       setBroadcastMessage('');
     } catch (err) {
-      setLiveNotification(`❌ Error: ${err.response?.data?.message || 'Failed to send broadcast'}`);
+      triggerNotification(`❌ Error: ${err.response?.data?.message || 'Failed to send broadcast'}`);
     } finally {
-      setTimeout(() => setLiveNotification(null), 4000);
+      setTimeout(() => triggerNotification(null), 4000);
     }
   };
   return (
@@ -376,9 +404,24 @@ export default function AdminDashboard() {
           <h1 className="text-3xl font-black tracking-tight">🚕 TaxiPay Admin Portal</h1>
           <p className="text-xs text-gray-400 mt-1">Manage user access, driver verification, and platform growth analytics</p>
         </div>
-        <div className="flex items-center gap-2 text-xs font-mono text-emerald-400 bg-emerald-500/10 px-4 py-2 rounded-full border border-emerald-500/20 shadow-inner">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          Real-Time Socket Active ({onlineUserIds.length} Online)
+        <div className="flex items-center gap-4">
+          <button 
+            type="button"
+            onClick={() => setUnreadCount(0)}
+            className="relative p-2.5 glass-panel rounded-full hover:bg-neutral-700 transition cursor-pointer border border-white/10"
+            title="Clear Notifications"
+          >
+            <Bell size={20} className="text-gray-300" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 bg-red-500 rounded-full text-[10px] font-bold border-2 border-neutral-900 shadow-lg animate-pulse">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+          <div className="flex items-center gap-2 text-xs font-mono text-emerald-400 bg-emerald-500/10 px-4 py-2 rounded-full border border-emerald-500/20 shadow-inner">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Real-Time Socket Active ({onlineUserIds.length} Online)
+          </div>
         </div>
       </div>
 
