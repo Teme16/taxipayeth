@@ -71,6 +71,26 @@ export default function DriverPage({
   const [profileError, setProfileError] = useState('');
   const [notification, setNotification] = useState(null);
 
+  // Play a simple notification sound using Web Audio API
+  const playNotificationSound = () => {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+      osc.frequency.exponentialRampToValueAtTime(1046.50, ctx.currentTime + 0.1); // C6
+      gainNode.gain.setValueAtTime(0.2, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.2);
+    } catch (e) { console.warn('Audio play failed:', e); }
+  };
+
   // Earnings & Seats
   const [totalEarnings, setTotalEarnings] = useState(initialDriver?.totalEarnings || 0);
   const [transactions, setTransactions] = useState([]);
@@ -268,6 +288,7 @@ export default function DriverPage({
           ...prev
         ]);
 
+        playNotificationSound();
         setNotification({
           title: '💰 Payment Received!',
           message: `${passengerName || 'Passenger'} paid ${amount} ETB for Seat(s) #${seatsToUpdate.join(', ')}`
@@ -413,6 +434,7 @@ export default function DriverPage({
         }
 
         setIsEditingProfile(false);
+        playNotificationSound();
         setNotification({
           title: '✅ Profile Saved',
           message: 'Your profile details have been saved to the database.'
