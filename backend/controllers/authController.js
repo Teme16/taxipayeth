@@ -269,8 +269,6 @@ exports.register =
             verification.telegramChatId ||
             '',
 
-          verificationStatus: 'verified',
-
           approvalStatus:
             role === 'driver'
               ? 'pending'
