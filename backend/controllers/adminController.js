@@ -543,6 +543,7 @@ exports.listTrips = asyncHandler(async (req, res) => {
         Transaction.find(filter)
             .populate('user', 'name phone')
             .populate('driver', 'name phone')
+            .populate({ path: 'trip', populate: { path: 'route', select: 'name origin destination' } })
             .sort({ createdAt: -1 })
             .skip((pageNum - 1) * limitNum)
             .limit(limitNum)
@@ -555,7 +556,7 @@ exports.listTrips = asyncHandler(async (req, res) => {
         _id: tx._id,
         passenger: tx.user || { name: tx.passengerSnapshot?.name || 'Unknown' },
         driver: tx.driver || { name: 'Unknown' },
-        route: { name: 'Direct Route / N/A' }, // Routes are not currently bound to transactions directly
+        route: tx.trip && tx.trip.route ? tx.trip.route : { name: 'N/A' },
         fare: tx.amount,
         status: tx.status,
         startTime: tx.createdAt,
