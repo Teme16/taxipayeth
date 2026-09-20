@@ -73,10 +73,19 @@ export default function AdminDashboard() {
   };
 
   const triggerNotification = (message) => {
+    if (!message) {
+      setLiveNotification(null);
+      return;
+    }
     playNotificationSound();
     setLiveNotification(message);
     setUnreadCount(prev => prev + 1);
     setNotificationsList(prev => [{ id: Date.now(), text: message, time: new Date() }, ...prev].slice(0, 50));
+    
+    // Auto-dismiss the live toast after 4 seconds
+    setTimeout(() => {
+      setLiveNotification(null);
+    }, 4000);
   };
 
   const token = localStorage.getItem('taxipay_token');
@@ -177,7 +186,6 @@ export default function AdminDashboard() {
 
       if (!payload.name || !payload.origin || !payload.destination || Number.isNaN(payload.baseFare) || Number.isNaN(payload.distance)) {
         triggerNotification('⚠️ Please fill out all route fields correctly.');
-        setTimeout(() => triggerNotification(null), 3000);
         return;
       }
 
@@ -197,7 +205,6 @@ export default function AdminDashboard() {
         errorMsg = err.response.data.errors.map(e => e.message).join(', ');
       }
       triggerNotification(`❌ ${errorMsg}`);
-      setTimeout(() => triggerNotification(null), 5000);
     }
   };
 
@@ -222,8 +229,6 @@ export default function AdminDashboard() {
       fetchAdminData();
     } catch (err) {
       triggerNotification('❌ Unable to delete route.');
-    } finally {
-      setTimeout(() => triggerNotification(null), 4000);
     }
   };
 
@@ -280,7 +285,6 @@ export default function AdminDashboard() {
         return prev;
       });
 
-      setTimeout(() => triggerNotification(null), 4000);
     });
 
     socket.on('user_status_changed', () => fetchAdminData());
@@ -299,7 +303,6 @@ export default function AdminDashboard() {
   const executeResetPassword = async () => {
     if (!newPasswordInput || newPasswordInput.trim().length < 4) {
       triggerNotification('⚠️ Password must be at least 4 characters long.');
-      setTimeout(() => triggerNotification(null), 3000);
       return;
     }
 
@@ -315,8 +318,6 @@ export default function AdminDashboard() {
       fetchAdminData();
     } catch (err) {
       triggerNotification(`❌ ${err.response?.data?.message || 'Error updating password'}`);
-    } finally {
-      setTimeout(() => triggerNotification(null), 4000);
     }
   };
 
@@ -335,8 +336,6 @@ export default function AdminDashboard() {
       }
     } catch (err) {
       triggerNotification('❌ Error updating approval status');
-    } finally {
-      setTimeout(() => triggerNotification(null), 4000);
     }
   };
 
@@ -354,8 +353,6 @@ export default function AdminDashboard() {
       }
     } catch (err) {
       triggerNotification('❌ Error verifying document');
-    } finally {
-      setTimeout(() => triggerNotification(null), 4000);
     }
   };
 
@@ -366,8 +363,6 @@ export default function AdminDashboard() {
       fetchAdminData();
     } catch (err) {
       triggerNotification('❌ Error updating block status');
-    } finally {
-      setTimeout(() => triggerNotification(null), 4000);
     }
   };
   const executeDeleteUser = async () => {
@@ -380,8 +375,6 @@ export default function AdminDashboard() {
       fetchAdminData();
     } catch (err) {
       triggerNotification('❌ Error deleting account');
-    } finally {
-      setTimeout(() => triggerNotification(null), 4000);
     }
   };
   const handleBroadcast = async (e) => {
