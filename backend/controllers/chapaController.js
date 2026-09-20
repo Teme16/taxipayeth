@@ -29,6 +29,9 @@ exports.initializePayment = async (req, res) => {
             status: 'pending'
         });
 
+        // Where Chapa redirects the user after successful payment
+        const clientUrl = req.headers.origin || 'https://taxipayeth.onrender.com';
+
         const payload = {
             amount: amount,
             currency: "ETB",
@@ -36,8 +39,7 @@ exports.initializePayment = async (req, res) => {
             first_name: firstName || "TaxiPay",
             last_name: lastName || "User",
             tx_ref: tx_ref,
-            // Where Chapa redirects the user after successful payment
-            return_url: `http://localhost:5173/payment-success?tx_ref=${tx_ref}`, 
+            return_url: `${clientUrl}/payment-success?tx_ref=${tx_ref}`,
             customization: {
                 title: "TaxiPay Wallet",
                 description: "Wallet Top-up"
