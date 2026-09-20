@@ -227,7 +227,7 @@ router.put(
   '/current-route',
   protect,
   asyncHandler(async (req, res) => {
-    if (req.user.role !== 'driver') {
+    if (req.user.role !== 'driver' && req.user.role !== 'admin') {
       return res.status(403).json({ success: false, message: 'Only drivers can update routes.' });
     }
 

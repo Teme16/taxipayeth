@@ -180,8 +180,8 @@ export default function DriverDashboard({
       }
     } catch (err) {
       console.error('Failed to update route:', err);
-      setToastMessage('❌ Failed to update route');
-      setTimeout(() => setToastMessage(null), 3000);
+      setToastMessage(`❌ ${err.response?.data?.message || 'Failed to update route'}`);
+      setTimeout(() => setToastMessage(null), 4000);
     }
   };
 
