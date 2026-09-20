@@ -6,7 +6,8 @@ import { Loader2, CheckCircle2, XCircle, ArrowLeft } from 'lucide-react';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://taxipayeth.onrender.com';
 
 export default function PaymentSuccess({ onComplete }) {
-    const { token } = useAuth();
+    const { user } = useAuth();
+    const token = localStorage.getItem('taxipay_token');
     const [status, setStatus] = useState('verifying'); // 'verifying', 'success', 'failed'
     const [message, setMessage] = useState('Verifying your payment with Chapa...');
 
@@ -31,8 +32,6 @@ export default function PaymentSuccess({ onComplete }) {
                 if (response.data.success) {
                     setStatus('success');
                     setMessage('Payment Successful! Your wallet has been credited.');
-                    // Automatically clean up the URL
-                    window.history.replaceState({}, document.title, window.location.pathname);
                 } else {
                     setStatus('failed');
                     setMessage(response.data.message || 'Payment failed or was cancelled.');
@@ -40,6 +39,9 @@ export default function PaymentSuccess({ onComplete }) {
             } catch (error) {
                 setStatus('failed');
                 setMessage(error.response?.data?.message || 'Error verifying payment with server.');
+            } finally {
+                // Automatically clean up the URL so returning to dashboard doesn't re-trigger it
+                window.history.replaceState({}, document.title, window.location.pathname);
             }
         };
 
