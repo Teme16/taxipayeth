@@ -187,8 +187,12 @@ export default function AdminDashboard() {
       fetchRoutes();
       fetchAdminData();
     } catch (err) {
-      triggerNotification(`❌ ${err.response?.data?.message || 'Unable to save route.'}`);
-      setTimeout(() => triggerNotification(null), 4000);
+      let errorMsg = err.response?.data?.message || 'Unable to save route.';
+      if (err.response?.data?.errors && err.response.data.errors.length > 0) {
+        errorMsg = err.response.data.errors.map(e => e.message).join(', ');
+      }
+      triggerNotification(`❌ ${errorMsg}`);
+      setTimeout(() => triggerNotification(null), 5000);
     }
   };
 
