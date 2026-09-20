@@ -87,6 +87,12 @@ const checkout = async ({
             throw createHttpError(400, 'Invalid payment amount.');
         }
 
+        const adminFee = 0.5;
+        if (numericAmount <= adminFee) {
+            throw createHttpError(400, `Payment amount must be greater than ${adminFee} birr.`);
+        }
+        const driverAmount = numericAmount - adminFee;
+
         // Atomically decrement passenger balance
         const userUpdate = await User.findOneAndUpdate(
             { _id: user._id, balance: { $gte: numericAmount } },
@@ -101,7 +107,7 @@ const checkout = async ({
         // Credit the driver
         const driverUpdate = await User.findOneAndUpdate(
             { _id: driverUser._id },
-            { $inc: { balance: numericAmount } },
+            { $inc: { balance: driverAmount } },
             { returnDocument: 'after', ...sessionOpt }
         );
 
@@ -109,11 +115,18 @@ const checkout = async ({
         const Driver = require('../models/Driver');
         await Driver.findOneAndUpdate(
             { user: driverUser._id },
-            { $inc: { totalEarnings: numericAmount } },
+            { $inc: { totalEarnings: driverAmount } },
             sessionOpt
         );
 
         console.log(`💰 Driver ${driverUser._id} balance updated: ${driverUpdate?.balance}`);
+
+        // Credit the admin
+        await User.findOneAndUpdate(
+            { role: 'admin' },
+            { $inc: { balance: adminFee } },
+            { sort: { createdAt: 1 }, ...sessionOpt }
+        );
 
         // Create transaction record
         const txArgs = [
