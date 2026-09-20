@@ -118,7 +118,7 @@ exports.verifyPayment = async (req, res) => {
                     name: 'TaxiPay Wallet Top-Up',
                     phone: '+251000000000'
                 },
-                seats: [0], // Meaningless for deposit but required by schema
+                seats: [1], // Meaningless for deposit but required by schema (> 0)
                 completedAt: new Date()
             });
             
