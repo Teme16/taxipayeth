@@ -136,6 +136,24 @@ exports.verifyPayment = async (req, res) => {
 
     } catch (error) {
         console.error('Chapa verify error:', error.response?.data || error.message);
+        
+        // If the error came from Chapa (e.g. 404 Transaction Not Found for unpaid transactions)
+        if (error.response && error.response.status >= 400) {
+            try {
+                await ChapaTransaction.findOneAndUpdate(
+                    { tx_ref: req.params.tx_ref },
+                    { status: 'failed' }
+                );
+            } catch (dbErr) {
+                console.error('Failed to update ChapaTransaction status:', dbErr);
+            }
+            // Return 200 so the frontend can display the failed state gracefully
+            return res.status(200).json({ 
+                success: false, 
+                message: error.response?.data?.message || "Payment was not completed or failed." 
+            });
+        }
+
         return res.status(500).json({ success: false, message: "Server error verifying Chapa payment" });
     }
 };
