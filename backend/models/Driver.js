@@ -130,6 +130,12 @@ const DriverSchema = new mongoose.Schema(
       default: Date.now
     },
 
+    currentRoute: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Route',
+      default: null
+    },
+
     isActive: {
       type: Boolean,
       default: true,

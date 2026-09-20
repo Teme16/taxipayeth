@@ -177,6 +177,12 @@ export default function PassengerPage({ user, onUserUpdate }) {
     };
   }, [scannedTaxi?.driverUserId, scannedTaxi?.driverId]);
 
+  useEffect(() => {
+    if (scannedTaxi && scannedTaxi.tariffPerSeat) {
+      setTotalAmount((selectedSeats.length * scannedTaxi.tariffPerSeat).toString());
+    }
+  }, [selectedSeats, scannedTaxi]);
+
   const handleScanSuccess = async (qrRawData) => {
     setShowScanner(false);
     let driverId = '';
@@ -234,6 +240,8 @@ export default function PassengerPage({ user, onUserUpdate }) {
             driverId: data.driver.driverId || fallbackData.driverId,
             driverUserId: data.driver.user?._id || data.driver.user || driverUserId,
             targaNo: data.driver.targaNo || fallbackData.targaNo,
+            tariffPerSeat: data.driver.currentRoute?.baseFare || fallbackData.tariffPerSeat,
+            currentRoute: data.driver.currentRoute || null,
             profilePic: formattedPic
           });
 
@@ -669,6 +677,19 @@ export default function PassengerPage({ user, onUserUpdate }) {
               </div>
             </div>
 
+            {scannedTaxi.currentRoute && (
+              <div className="bg-neutral-900 border border-neutral-700 p-3 rounded-2xl flex justify-between items-center">
+                <div>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Route</p>
+                  <p className="text-sm font-bold text-gray-200">{scannedTaxi.currentRoute.name}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Tariff</p>
+                  <p className="text-sm font-bold text-emerald-400">{scannedTaxi.currentRoute.baseFare} ETB</p>
+                </div>
+              </div>
+            )}
+
             <button onClick={resetFlow} type="button" className="text-[11px] text-gray-400 hover:text-white flex items-center gap-1 cursor-pointer w-full justify-center">
               <RefreshCw size={12} /> Scan Again
             </button>
@@ -689,9 +710,9 @@ export default function PassengerPage({ user, onUserUpdate }) {
                   <input
                     type="number"
                     value={totalAmount}
-                    onChange={(e) => setTotalAmount(e.target.value)}
+                    readOnly
                     placeholder="0.00"
-                    className="w-28 text-right bg-black/40 border border-white/10 rounded-xl py-2 pr-9 pl-2 font-mono font-black text-emerald-400 outline-none focus:border-emerald-500"
+                    className="w-28 text-right bg-black/40 border border-white/10 rounded-xl py-2 pr-9 pl-2 font-mono font-black text-emerald-400 outline-none opacity-80 cursor-not-allowed"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-500/50 pointer-events-none">ETB</span>
                 </div>

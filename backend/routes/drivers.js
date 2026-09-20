@@ -165,10 +165,12 @@ router.get(
     const driver =
       await Driver.findOne({
         user: req.user._id
-      }).populate(
+      })
+      .populate(
         'user',
         'name phone email role avatar approvalStatus'
-      );
+      )
+      .populate('currentRoute');
 
     if (!driver) {
       return res.status(404).json({
@@ -199,10 +201,12 @@ router.get(
     }
 
     const driver =
-      await Driver.findOne(query).populate(
+      await Driver.findOne(query)
+      .populate(
         'user',
         'name phone avatar'
-      );
+      )
+      .populate('currentRoute');
 
     if (!driver) {
       return res.status(404).json({
@@ -216,6 +220,33 @@ router.get(
       success: true,
       driver
     });
+  })
+);
+
+router.put(
+  '/current-route',
+  protect,
+  asyncHandler(async (req, res) => {
+    if (req.user.role !== 'driver') {
+      return res.status(403).json({ success: false, message: 'Only drivers can update routes.' });
+    }
+
+    const { routeId } = req.body;
+    if (!routeId) {
+      return res.status(400).json({ success: false, message: 'Route ID is required.' });
+    }
+
+    const driver = await Driver.findOneAndUpdate(
+      { user: req.user._id },
+      { $set: { currentRoute: routeId } },
+      { new: true }
+    ).populate('currentRoute');
+
+    if (!driver) {
+      return res.status(404).json({ success: false, message: 'Driver profile not found.' });
+    }
+
+    return res.json({ success: true, message: 'Route updated successfully.', currentRoute: driver.currentRoute });
   })
 );
 

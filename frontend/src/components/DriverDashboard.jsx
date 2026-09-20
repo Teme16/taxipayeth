@@ -11,6 +11,10 @@ export default function DriverDashboard({
   const [payments, setPayments] = useState([]);
   const [totalToday, setTotalToday] = useState(0);
 
+  // Route States
+  const [availableRoutes, setAvailableRoutes] = useState([]);
+  const [currentRoute, setCurrentRoute] = useState(null);
+
   // Profile Edit Modal States
   const [showEditModal, setShowEditModal] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -63,6 +67,7 @@ export default function DriverDashboard({
             address: d.address || '',
             targaNo: d.targaNo || ''
           });
+          if (d.currentRoute) setCurrentRoute(d.currentRoute);
         }
       } catch (err) {
         console.error('Failed to load driver profile:', err);
@@ -71,6 +76,20 @@ export default function DriverDashboard({
 
     if (resolvedDriverId) fetchDriverProfile();
   }, [resolvedDriverId, token]);
+
+  useEffect(() => {
+    const fetchRoutes = async () => {
+      try {
+        const res = await axios.get('https://taxipayeth.onrender.com/api/routes', authHeader);
+        if (res.data.success) {
+          setAvailableRoutes(res.data.routes);
+        }
+      } catch (err) {
+        console.error('Failed to load routes:', err);
+      }
+    };
+    fetchRoutes();
+  }, [token]);
 
   // Live Socket Payments & Earnings Tracker
   useEffect(() => {
@@ -149,6 +168,23 @@ export default function DriverDashboard({
     }
   };
 
+  const handleRouteSelect = async (e) => {
+    const routeId = e.target.value;
+    if (!routeId) return;
+    try {
+      const res = await axios.put('https://taxipayeth.onrender.com/api/drivers/current-route', { routeId }, authHeader);
+      if (res.data.success) {
+        setCurrentRoute(res.data.currentRoute);
+        setToastMessage('✅ Route updated successfully!');
+        setTimeout(() => setToastMessage(null), 3000);
+      }
+    } catch (err) {
+      console.error('Failed to update route:', err);
+      setToastMessage('❌ Failed to update route');
+      setTimeout(() => setToastMessage(null), 3000);
+    }
+  };
+
   return (
     <div className="max-w-md mx-auto bg-neutral-900 text-white rounded-3xl p-6 shadow-2xl border border-neutral-800 relative">
       {/* Toast Alert */}
@@ -178,6 +214,23 @@ export default function DriverDashboard({
             <Bell size={18} />
           </div>
         </div>
+      </div>
+
+      {/* Route Selection */}
+      <div className="bg-neutral-950 p-4 rounded-2xl mb-6 border border-neutral-800">
+        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Current Route</label>
+        <select
+          value={currentRoute?._id || currentRoute || ''}
+          onChange={handleRouteSelect}
+          className="w-full bg-neutral-900 border border-neutral-700 p-2.5 rounded-xl text-white outline-none focus:border-blue-500"
+        >
+          <option value="" disabled>Select your active route</option>
+          {availableRoutes.map(route => (
+            <option key={route._id} value={route._id}>
+              {route.name} (ETB {route.baseFare})
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Earnings Summary Card */}

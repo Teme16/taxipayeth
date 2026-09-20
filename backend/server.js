@@ -37,6 +37,7 @@ const driverRoutes = require('./routes/drivers');
 const paymentRoutesFactory = require('./routes/payments');
 const adminRoutes = require('./routes/adminRoutes');
 const tariffRoutes = require('./routes/tariffs');
+const routeRoutes = require('./routes/routeRoutes');
 
 const {
   getDriverRoomName
@@ -474,6 +475,11 @@ app.use(
 app.use(
   '/api/drivers',
   driverRoutes
+);
+
+app.use(
+  '/api/routes',
+  routeRoutes
 );
 
 app.use(
