@@ -551,17 +551,31 @@ exports.listTrips = asyncHandler(async (req, res) => {
         Transaction.countDocuments(filter)
     ]);
 
+    const driverIds = [...new Set(transactions.map(tx => tx.driver?._id).filter(Boolean))];
+    const drivers = await Driver.find({ user: { $in: driverIds } }).populate('currentRoute').lean();
+    const driverMap = new Map(drivers.map(d => [d.user.toString(), d]));
+
     // Map transactions to the 'Trip' shape expected by the frontend
-    const trips = transactions.map(tx => ({
-        _id: tx._id,
-        passenger: tx.user || { name: tx.passengerSnapshot?.name || 'Unknown' },
-        driver: tx.driver || { name: 'Unknown' },
-        route: tx.trip && tx.trip.route ? tx.trip.route : { name: 'N/A' },
-        fare: tx.amount,
-        status: tx.status,
-        startTime: tx.createdAt,
-        endTime: tx.completedAt || tx.createdAt
-    }));
+    const trips = transactions.map(tx => {
+        const driverData = tx.driver ? driverMap.get(tx.driver._id.toString()) : null;
+        let route = { name: 'N/A' };
+        if (tx.trip && tx.trip.route) {
+            route = tx.trip.route;
+        } else if (driverData && driverData.currentRoute) {
+            route = driverData.currentRoute;
+        }
+
+        return {
+            _id: tx._id,
+            passenger: tx.user || { name: tx.passengerSnapshot?.name || 'Unknown' },
+            driver: tx.driver || { name: 'Unknown' },
+            route,
+            fare: tx.amount,
+            status: tx.status,
+            startTime: tx.createdAt,
+            endTime: tx.completedAt || tx.createdAt
+        };
+    });
 
     return res.status(200).json({
         success: true,
