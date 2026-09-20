@@ -530,26 +530,37 @@ exports.listTrips = asyncHandler(async (req, res) => {
     const pageNum = Math.max(1, Number(page));
     const limitNum = Math.min(100, Math.max(1, Number(limit)));
 
-    const filter = {};
+    const filter = { type: 'payment' };
 
     if (
         status &&
-        ['requested', 'ongoing', 'completed', 'cancelled'].includes(status)
+        ['pending', 'completed', 'failed'].includes(status)
     ) {
         filter.status = status;
     }
 
-    const [trips, total] = await Promise.all([
-        Trip.find(filter)
+    const [transactions, total] = await Promise.all([
+        Transaction.find(filter)
+            .populate('user', 'name phone')
             .populate('driver', 'name phone')
-            .populate('passenger', 'name phone')
-            .populate('route', 'name origin destination')
             .sort({ createdAt: -1 })
             .skip((pageNum - 1) * limitNum)
             .limit(limitNum)
             .lean(),
-        Trip.countDocuments(filter)
+        Transaction.countDocuments(filter)
     ]);
+
+    // Map transactions to the 'Trip' shape expected by the frontend
+    const trips = transactions.map(tx => ({
+        _id: tx._id,
+        passenger: tx.user || { name: tx.passengerSnapshot?.name || 'Unknown' },
+        driver: tx.driver || { name: 'Unknown' },
+        route: { name: 'Direct Route / N/A' }, // Routes are not currently bound to transactions directly
+        fare: tx.amount,
+        status: tx.status,
+        startTime: tx.createdAt,
+        endTime: tx.completedAt || tx.createdAt
+    }));
 
     return res.status(200).json({
         success: true,
