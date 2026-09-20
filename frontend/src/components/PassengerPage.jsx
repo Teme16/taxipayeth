@@ -116,15 +116,47 @@ export default function PassengerPage({ user, onUserUpdate }) {
     return () => clearTimeout(timer);
   }, []);
 
-  // Re-sync history ONLY when the active user changes (storageKey changes)
+  // Fetch transaction history from backend
   useEffect(() => {
-    const savedReceipts = localStorage.getItem(storageKey);
-    if (savedReceipts) {
-      setReceiptHistory(JSON.parse(savedReceipts));
+    const fetchHistory = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/payments/history`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        const data = await res.json();
+        if (data.success && data.transactions) {
+          const mappedHistory = data.transactions.map(tx => ({
+            transactionId: tx.transactionId || tx._id,
+            driverName: tx.type === 'deposit' ? 'Wallet Top-up' : (tx.type === 'withdraw' ? 'Withdrawal' : (tx.driver?.name || 'Driver')),
+            targaNo: tx.targaNo || (tx.type === 'deposit' ? 'DEPOSIT' : (tx.type === 'withdraw' ? 'WITHDRAWAL' : '')),
+            seats: tx.seats && tx.seats.length > 0 && tx.seats[0] !== 0 ? tx.seats : ['N/A'],
+            amountPaid: tx.amount,
+            amount: tx.amount, // fallback
+            paymentMethod: tx.metadata?.paymentMethod || 'TaxiPay Wallet',
+            type: tx.type || 'fare',
+            timestamp: new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' }),
+            passengerPhone: tx.passengerSnapshot?.phone || user?.phone
+          }));
+          setReceiptHistory(mappedHistory);
+          localStorage.setItem(storageKey, JSON.stringify(mappedHistory));
+        }
+      } catch (err) {
+        console.error('Failed to fetch transaction history:', err);
+        // Fallback to local storage
+        const savedReceipts = localStorage.getItem(storageKey);
+        if (savedReceipts) setReceiptHistory(JSON.parse(savedReceipts));
+      }
+    };
+
+    if (token) {
+      fetchHistory();
     } else {
-      setReceiptHistory([]);
+      const savedReceipts = localStorage.getItem(storageKey);
+      setReceiptHistory(savedReceipts ? JSON.parse(savedReceipts) : []);
     }
-  }, [storageKey]);
+  }, [storageKey, token, user]);
 
   // Sync balance from user object separately
   useEffect(() => {
