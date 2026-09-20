@@ -234,6 +234,11 @@ export default function PassengerPage({ user, onUserUpdate }) {
             }
           }
 
+          if (!data.driver.currentRoute) {
+            alert('This taxi is not active yet. Please ask the driver to select a route on their dashboard.');
+            return;
+          }
+
           setScannedTaxi({
             ...fallbackData,
             driverName: data.driver.user?.name || data.driver.fullName || data.driver.name || fallbackData.driverName,
