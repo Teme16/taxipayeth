@@ -769,7 +769,8 @@ exports.stats = asyncHandler(async (req, res) => {
         completedTrips,
         totalTransactions,
         revenueResult,
-        totalRoutes
+        totalRoutes,
+        adminUser
     ] = await Promise.all([
         User.countDocuments(),
         User.countDocuments({ role: 'driver' }),
@@ -796,7 +797,8 @@ exports.stats = asyncHandler(async (req, res) => {
                 }
             }
         ]),
-        Route.countDocuments()
+        Route.countDocuments(),
+        User.findById(req.user._id).select('balance')
     ]);
 
     const totalRevenue =
@@ -804,9 +806,12 @@ exports.stats = asyncHandler(async (req, res) => {
             ? revenueResult[0].totalRevenue
             : 0;
 
+    const adminBalance = adminUser ? adminUser.balance : 0;
+
     return res.status(200).json({
         success: true,
         stats: {
+            adminBalance,
             users: {
                 total: totalUsers,
                 drivers: totalDrivers,

@@ -49,6 +49,8 @@ export default function AdminDashboard() {
   const [onlineUserIds, setOnlineUserIds] = useState([]);
   const [liveNotification, setLiveNotification] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationsList, setNotificationsList] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // Play a simple notification sound using Web Audio API
   const playNotificationSound = () => {
@@ -74,6 +76,7 @@ export default function AdminDashboard() {
     playNotificationSound();
     setLiveNotification(message);
     setUnreadCount(prev => prev + 1);
+    setNotificationsList(prev => [{ id: Date.now(), text: message, time: new Date() }, ...prev].slice(0, 50));
   };
 
   const token = localStorage.getItem('taxipay_token');
@@ -91,7 +94,9 @@ export default function AdminDashboard() {
         totalUsers: statsRes.data.stats?.users?.total || 0,
         drivers: statsRes.data.stats?.users?.drivers || 0,
         passengers: statsRes.data.stats?.users?.passengers || 0,
-        pendingApprovals: statsRes.data.stats?.users?.pendingApprovals || 0
+        pendingApprovals: statsRes.data.stats?.users?.pendingApprovals || 0,
+        adminBalance: statsRes.data.stats?.adminBalance || 0,
+        totalRevenue: statsRes.data.stats?.transactions?.totalRevenue || 0
       });
       const analytics = chartRes.data.analytics || {};
       const newUsers = analytics.newUsers || [];
@@ -409,19 +414,42 @@ export default function AdminDashboard() {
           <p className="text-xs text-gray-400 mt-1">Manage user access, driver verification, and platform growth analytics</p>
         </div>
         <div className="flex items-center gap-4">
-          <button 
-            type="button"
-            onClick={() => setUnreadCount(0)}
-            className="relative p-2.5 glass-panel rounded-full hover:bg-neutral-700 transition cursor-pointer border border-white/10"
-            title="Clear Notifications"
-          >
-            <Bell size={20} className="text-gray-300" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 bg-red-500 rounded-full text-[10px] font-bold border-2 border-neutral-900 shadow-lg animate-pulse">
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
+          <div className="relative">
+            <button 
+              type="button"
+              onClick={() => { setShowNotifications(!showNotifications); setUnreadCount(0); }}
+              className="relative p-2.5 glass-panel rounded-full hover:bg-neutral-700 transition cursor-pointer border border-white/10"
+              title="View Notifications"
+            >
+              <Bell size={20} className="text-gray-300" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 bg-red-500 rounded-full text-[10px] font-bold border-2 border-neutral-900 shadow-lg animate-pulse">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+            
+            {showNotifications && (
+              <div className="absolute right-0 mt-3 w-80 glass-card border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 animate-fade-in">
+                <div className="p-3 border-b border-white/10 bg-black/40 flex justify-between items-center">
+                  <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider">Notifications</h4>
+                  <button onClick={() => setNotificationsList([])} className="text-[10px] text-red-400 hover:text-red-300 cursor-pointer">Clear All</button>
+                </div>
+                <div className="max-h-64 overflow-y-auto">
+                  {notificationsList.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-gray-500">No new notifications</div>
+                  ) : (
+                    notificationsList.map(n => (
+                      <div key={n.id} className="p-3 border-b border-white/5 hover:bg-white/5 transition text-xs">
+                        <p className="text-gray-200">{n.text}</p>
+                        <p className="text-[10px] text-gray-500 mt-1">{new Date(n.time).toLocaleTimeString()}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             )}
-          </button>
+          </div>
           <div className="flex items-center gap-2 text-xs font-mono text-emerald-400 bg-emerald-500/10 px-4 py-2 rounded-full border border-emerald-500/20 shadow-inner">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             Real-Time Socket Active ({onlineUserIds.length} Online)
@@ -774,12 +802,12 @@ export default function AdminDashboard() {
                   </div>
                   <div className="space-y-3">
                     <div className="glass-panel p-4 rounded-xl border border-white/5 flex justify-between items-center">
-                      <span className="text-sm font-bold text-gray-300">Platform Commission</span>
-                      <span className="text-emerald-400 font-mono text-sm">15%</span>
+                      <span className="text-sm font-bold text-gray-300">Total Profit (Admin Balance)</span>
+                      <span className="text-emerald-400 font-black text-xl">ETB {stats.adminBalance?.toFixed(2) || '0.00'}</span>
                     </div>
                     <div className="glass-panel p-4 rounded-xl border border-white/5 flex justify-between items-center">
-                      <span className="text-sm font-bold text-gray-300">Payment Gateway</span>
-                      <span className="text-blue-400 font-mono text-sm">Chapa (Active)</span>
+                      <span className="text-sm font-bold text-gray-300">Total Transactions Revenue</span>
+                      <span className="text-blue-400 font-mono text-sm">ETB {stats.totalRevenue?.toFixed(2) || '0.00'}</span>
                     </div>
                   </div>
                 </div>
