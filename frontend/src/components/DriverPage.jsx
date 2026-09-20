@@ -100,6 +100,8 @@ export default function DriverPage({
     11: 'unpaid', 12: 'unpaid', 13: 'unpaid', 14: 'unpaid', 15: 'unpaid'
   });
 
+  const [availableRoutes, setAvailableRoutes] = useState([]);
+
   // Sync props to state
   useEffect(() => {
     if (initialDriver) {
@@ -224,8 +226,25 @@ export default function DriverPage({
       }
     };
 
+    const fetchRoutes = async () => {
+      if (!token) return;
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/routes`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.success && data.routes) {
+          setAvailableRoutes(data.routes);
+        }
+      } catch (err) {
+        console.error('Routes fetch error:', err);
+      }
+    };
+
     fetchDriver();
     fetchHistory();
+    fetchRoutes();
 
     // ── 2. Socket setup ───────────────────────────────────────
     // Helper: join all relevant rooms once the socket is connected
@@ -541,6 +560,63 @@ export default function DriverPage({
           <button onClick={resetAllSeats} className="text-[11px] text-gray-400 hover:text-white flex items-center gap-1 glass-panel p-2 rounded-xl transition border border-white/20 cursor-pointer">
             <RefreshCw size={12} /> Reset Trip
           </button>
+        </div>
+
+        {/* --- Route Selection UI --- */}
+        <div className="bg-black/30 p-4 rounded-2xl border border-white/5 shadow-inner">
+          <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 flex justify-between items-center">
+            <span>Current Route</span>
+            {!driver?.currentRoute && <span className="text-red-400 text-[10px] animate-pulse font-bold">Required for payments</span>}
+          </label>
+          <select
+            value={driver?.currentRoute?._id || driver?.currentRoute || ''}
+            onChange={async (e) => {
+              const routeId = e.target.value;
+              if (!routeId) return;
+              try {
+                const token = localStorage.getItem('taxipay_token');
+                const res = await fetch(`${API_BASE_URL}/api/drivers/current-route`, {
+                  method: 'PUT',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                  },
+                  body: JSON.stringify({ routeId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                  setDriver(prev => ({ ...prev, currentRoute: data.currentRoute }));
+                  playNotificationSound();
+                  setNotification({
+                    title: '✅ Route Updated',
+                    message: 'Your active route has been updated.'
+                  });
+                  setTimeout(() => setNotification(null), 3000);
+                } else {
+                  setNotification({
+                    title: '❌ Update Failed',
+                    message: data.message || 'Failed to update route.'
+                  });
+                  setTimeout(() => setNotification(null), 4000);
+                }
+              } catch (err) {
+                console.error('Route update error:', err);
+                setNotification({
+                  title: '❌ Update Failed',
+                  message: 'Failed to update route. Check your connection.'
+                });
+                setTimeout(() => setNotification(null), 4000);
+              }
+            }}
+            className="w-full bg-neutral-900 border border-neutral-700 p-2.5 rounded-xl text-white outline-none focus:border-blue-500 text-sm font-bold shadow-lg"
+          >
+            <option value="" disabled>Select your active route</option>
+            {availableRoutes.map(route => (
+              <option key={route._id} value={route._id}>
+                {route.name} (ETB {route.baseFare})
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="grid grid-cols-3 gap-2 text-[10px] font-bold text-center">
