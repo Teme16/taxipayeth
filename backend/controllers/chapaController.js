@@ -39,7 +39,7 @@ exports.initializePayment = async (req, res) => {
             first_name: firstName || "TaxiPay",
             last_name: lastName || "User",
             tx_ref: tx_ref,
-            return_url: `${clientUrl}/payment-success?tx_ref=${tx_ref}`,
+            return_url: `${clientUrl}/?tx_ref=${tx_ref}`,
             customization: {
                 title: "TaxiPay Wallet",
                 description: "Wallet Top-up"
