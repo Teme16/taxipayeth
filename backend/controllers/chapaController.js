@@ -116,7 +116,7 @@ exports.verifyPayment = async (req, res) => {
                 idempotencyKey: `chapa-${tx_ref}`,
                 passengerSnapshot: {
                     name: 'TaxiPay Wallet Top-Up',
-                    phone: '+251000000000'
+                    phone: '+251900000000'
                 },
                 seats: [1], // Meaningless for deposit but required by schema (> 0)
                 completedAt: new Date()
